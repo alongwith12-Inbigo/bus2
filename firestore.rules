@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Person validator
+    function isValidPerson(data) {
+      return data.keys().hasAll(['id', 'name', 'dept', 'out', 'back']) &&
+        data.keys().hasOnly(['id', 'name', 'dept', 'out', 'back']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 64 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.dept is string && data.dept.size() <= 200 &&
+        data.out is number && (data.out == 1 || data.out == 2) &&
+        data.back is number && (data.back == 1 || data.back == 2);
+    }
+
+    // Record validator
+    function isValidRecord(data) {
+      return data.keys().hasAll(['id', 'phase', 'status', 'at', 'by']) &&
+        data.keys().hasOnly(['id', 'phase', 'status', 'at', 'by']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 64 &&
+        data.phase is string && (data.phase == '출발' || data.phase == '귀가') &&
+        data.status is string && (data.status == '미탑승' || data.status == '탑승' || data.status == '불참' || data.status == '개별이동') &&
+        data.at is string && data.at.size() <= 100 &&
+        data.by is string && data.by.size() <= 100;
+    }
+
+    // Setting validator
+    function isValidSetting(data) {
+      return data.keys().hasAll(['phase', 'bus', 'closed', 'final']) &&
+        data.keys().hasOnly(['phase', 'bus', 'closed', 'final', 'at']) &&
+        data.phase is string && (data.phase == '출발' || data.phase == '귀가') &&
+        data.bus is number && (data.bus == 1 || data.bus == 2) &&
+        data.closed is bool &&
+        data.final is bool &&
+        (!('at' in data) || (data.at is string && data.at.size() <= 100));
+    }
+
+    // Contact validator
+    function isValidContact(data) {
+      return data.keys().hasAll(['bus', 'name', 'phone']) &&
+        data.keys().hasOnly(['bus', 'name', 'phone']) &&
+        data.bus is number && (data.bus == 1 || data.bus == 2) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.phone is string && data.phone.size() <= 50;
+    }
+
+    // Log validator
+    function isValidLog(data) {
+      return data.keys().hasAll(['id', 'timestamp', 'role', 'action']) &&
+        data.keys().hasOnly(['id', 'timestamp', 'role', 'action', 'targetId', 'detail']) &&
+        data.id is string && data.id.size() <= 100 &&
+        data.timestamp is string && data.timestamp.size() <= 100 &&
+        data.role is string && data.role.size() <= 50 &&
+        data.action is string && data.action.size() <= 100 &&
+        (!('targetId' in data) || (data.targetId is string && data.targetId.size() <= 100)) &&
+        (!('detail' in data) || (data.detail is string && data.detail.size() <= 10000));
+    }
+
+    // Match People collection: workshop participants
+    match /people/{personId} {
+      allow read: if true;
+      allow create, update: if isValidId(personId) && isValidPerson(incoming());
+      allow delete: if isValidId(personId);
+    }
+
+    // Match Records collection: boarding status
+    match /records/{recordId} {
+      allow read: if true;
+      allow create, update: if isValidId(recordId) && isValidRecord(incoming());
+      allow delete: if isValidId(recordId);
+    }
+
+    // Match Settings collection: bus closed / final status
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create, update: if isValidId(settingId) && isValidSetting(incoming());
+      allow delete: if isValidId(settingId);
+    }
+
+    // Match Contacts collection: bus managers
+    match /contacts/{contactId} {
+      allow read: if true;
+      allow create, update: if isValidId(contactId) && isValidContact(incoming());
+      allow delete: if isValidId(contactId);
+    }
+
+    // Match Logs collection: audit log
+    match /logs/{logId} {
+      allow read: if true;
+      allow create: if isValidId(logId) && isValidLog(incoming());
+      allow update, delete: if false; // Append-only audit log
+    }
+
+    // Default deny catch-all for any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

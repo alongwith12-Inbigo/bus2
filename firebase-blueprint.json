@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "Person": {
+      "title": "Person",
+      "description": "Workshop participant information",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique participant ID",
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "description": "Participant real name",
+          "maxLength": 50
+        },
+        "dept": {
+          "type": "string",
+          "description": "School / Department and Position",
+          "maxLength": 100
+        },
+        "out": {
+          "type": "number",
+          "description": "Outbound departure bus number (1 or 2)"
+        },
+        "back": {
+          "type": "number",
+          "description": "Return trip bus number (1 or 2)"
+        }
+      },
+      "required": ["id", "name", "dept", "out", "back"]
+    },
+    "Record": {
+      "title": "Record",
+      "description": "Boarding status record for a participant in a phase",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Participant ID",
+          "maxLength": 64
+        },
+        "phase": {
+          "type": "string",
+          "description": "Workshop journey phase: 출발 or 귀가",
+          "enum": ["출발", "귀가"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Boarding state",
+          "enum": ["미탑승", "탑승", "불참", "개별이동"]
+        },
+        "at": {
+          "type": "string",
+          "description": "Timestamp string of state change",
+          "maxLength": 64
+        },
+        "by": {
+          "type": "string",
+          "description": "Updater entity (본인 or 관리자 or 관리자 초기화)",
+          "maxLength": 50
+        }
+      },
+      "required": ["id", "phase", "status", "at", "by"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Bus phase operational settings (closed, final confirmation)",
+      "type": "object",
+      "properties": {
+        "phase": {
+          "type": "string",
+          "description": "Phase (출발 or 귀가)",
+          "enum": ["출발", "귀가"]
+        },
+        "bus": {
+          "type": "number",
+          "description": "Bus number (1 or 2)"
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "Whether boarding check is closed"
+        },
+        "final": {
+          "type": "boolean",
+          "description": "Whether final roster count has been confirmed"
+        },
+        "at": {
+          "type": "string",
+          "description": "Timestamp of final confirmation",
+          "maxLength": 64
+        }
+      },
+      "required": ["phase", "bus", "closed", "final"]
+    },
+    "Contact": {
+      "title": "Contact",
+      "description": "Bus manager contact details",
+      "type": "object",
+      "properties": {
+        "bus": {
+          "type": "number",
+          "description": "Bus number (1 or 2)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Manager name",
+          "maxLength": 50
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number for call/SMS",
+          "maxLength": 30
+        }
+      },
+      "required": ["bus", "name", "phone"]
+    },
+    "Log": {
+      "title": "Log",
+      "description": "Audit log for operational and state changes",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Log entry unique ID",
+          "maxLength": 64
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp ISO string",
+          "maxLength": 64
+        },
+        "role": {
+          "type": "string",
+          "description": "Actor role (1, 2, master, system)",
+          "maxLength": 30
+        },
+        "action": {
+          "type": "string",
+          "description": "Action performed",
+          "maxLength": 60
+        },
+        "targetId": {
+          "type": "string",
+          "description": "Target participant or bus ID",
+          "maxLength": 64
+        },
+        "detail": {
+          "type": "string",
+          "description": "Detailed description or JSON payload",
+          "maxLength": 5000
+        }
+      },
+      "required": ["id", "timestamp", "role", "action"]
+    }
+  },
+  "firestore": {
+    "/people/{personId}": {
+      "schema": "Person",
+      "description": "Workshop participants"
+    },
+    "/records/{recordId}": {
+      "schema": "Record",
+      "description": "Boarding status records"
+    },
+    "/settings/{settingId}": {
+      "schema": "Setting",
+      "description": "Operational settings for bus and phase"
+    },
+    "/contacts/{contactId}": {
+      "schema": "Contact",
+      "description": "Manager contact phone numbers"
+    },
+    "/logs/{logId}": {
+      "schema": "Log",
+      "description": "Audit history and change logs"
+    }
+  }
+}

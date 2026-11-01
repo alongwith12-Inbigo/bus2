@@ -1,0 +1,341 @@
+<!DOCTYPE html><html lang="ko"><head><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+:root{font-family:system-ui,'Malgun Gothic',sans-serif;color:#182a46;background:#f4f7fc}*{box-sizing:border-box}body{margin:0}main{max-width:760px;margin:auto;padding:20px 14px 70px}h1{font-size:24px;margin:5px 0 7px}h2{font-size:19px;margin:0 0 12px}.muted{color:#63748c;font-size:13px}.card{background:white;border:1px solid #e1e8f2;border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 3px 12px #182a4608}.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.tabs{display:flex;gap:7px;margin:15px 0}.tabs button{flex:1}.btn,button{cursor:pointer;border:1px solid #cdd9eb;border-radius:10px;background:white;padding:11px 14px;font-size:14px;color:#183255;font-weight:650}button.primary{background:#245cbe;color:white;border-color:#245cbe}button:disabled{opacity:.5;cursor:not-allowed}input,select{width:100%;padding:13px;border:1px solid #cdd9eb;border-radius:10px;font:inherit;background:white}label{display:block;margin:12px 0 6px;font-weight:650;font-size:14px}.person{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eef1f6}.person:last-child{border:0}.person small{display:block;color:#63748c;margin-top:4px}.chip{font-size:12px;border-radius:20px;padding:5px 8px;background:#edf2fa;white-space:nowrap}.ok{color:#147a54;background:#e5f6ef}.warn{color:#a36100;background:#fff2d8}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#f2f6fc;border-radius:12px;padding:12px;text-align:center}.stat strong{display:block;font-size:23px;margin-top:6px}.hidden{display:none!important}.actions{display:flex;flex-wrap:wrap;gap:7px}.actions button{padding:8px 10px}.notice{background:#eef5ff;padding:12px;border-radius:10px;font-size:13px}.error{color:#a12828}.success{color:#13764d}.toplink{font-size:13px}#message{min-height:20px;font-size:13px} @media(max-width:440px){.actions{justify-content:flex-end}.person{align-items:flex-start}.actions button{font-size:12px;padding:8px}.card{padding:14px}}
+
+/* Mobile-first compact roster */
+.progress-wrap{margin:0 0 14px;padding:13px 14px;background:#f2f6fc;border-radius:12px}
+.progress-top{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:9px}
+.progress-top strong{font-size:18px}.progress-track{height:17px;background:#dce5f1;border-radius:999px;overflow:hidden}
+.progress-fill{height:100%;width:0;background:#245cbe;border-radius:999px;transition:width .25s ease}
+.person.compact{min-height:49px;padding:5px 0;align-items:center;gap:6px}
+.person.compact .who{display:flex;align-items:center;min-width:0;gap:8px;flex:1}
+.person.compact .seq{color:#71809a;font-size:12px;min-width:22px;font-variant-numeric:tabular-nums}
+.person.compact .who strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person.compact .actions{flex-wrap:nowrap;flex-shrink:0;gap:5px}
+.person.compact select{width:104px;padding:9px 5px;font-size:12px;border-radius:8px}
+.person.compact button{padding:9px 8px;font-size:12px;white-space:nowrap}
+.person.compact .chip{font-size:12px}
+@media(max-width:440px){main{padding:10px 10px 55px}.card{padding:12px;margin:10px 0}.person.compact{align-items:center}.person.compact .actions{justify-content:flex-end}.person.compact .actions button{font-size:12px;padding:9px 7px}}
+
+/* v3: compact digital code-lab visual system */
+:root{color:#182344;background:#f5f1ff;font-family:'Pretendard','Noto Sans KR',system-ui,'Malgun Gothic',sans-serif}
+body{background:#f5f1ff}
+main{max-width:680px;padding:9px 9px 36px}
+h1{font-size:20px;letter-spacing:-.6px;margin:2px 0 3px}h2{font-size:15px;margin:0 0 6px}
+.muted{color:#66708e;font-size:11px}
+.card{background:#fff;border:1.5px solid #22294e;border-radius:2px;padding:10px;margin:8px 0;box-shadow:3px 3px 0 #22294e}
+button,.btn,input,select{border:1.5px solid #22294e;border-radius:2px;box-shadow:2px 2px 0 #22294e;background:white;color:#20274c}
+button,.btn{font-size:12px;padding:7px 9px;font-weight:700}
+button.primary{background:#8d6cf1;border-color:#22294e;color:#fff}
+button:active{transform:translate(1px,1px);box-shadow:1px 1px 0 #22294e}
+input,select{padding:8px;font-size:12px;box-shadow:none}
+.tabs{gap:5px;margin:7px 0}
+label{margin:6px 0 4px;font-size:12px}
+#message{min-height:0;margin:3px 0;font-size:11px}
+.row{gap:5px}
+.chip{border-radius:2px;padding:3px 5px;font-size:10px}
+.ok{background:#e2ff9d;color:#253617}
+.warn{background:#fff0ae;color:#6a4d00}
+.stats{gap:4px}
+.stat{padding:5px 3px;border:1px solid #22294e;border-radius:2px;background:#f5f1ff;font-size:10px}
+.stat strong{font-size:17px;margin-top:2px}
+.actions{gap:4px}
+.actions button{padding:5px 6px;font-size:11px}
+.progress-wrap{margin:7px 0 6px;padding:7px 8px;border:1.5px solid #22294e;border-radius:2px;background:#f5f1ff;box-shadow:2px 2px 0 #22294e}
+.progress-top{font-size:11px;margin-bottom:5px}
+.progress-top strong{font-size:15px}
+.progress-track{height:11px;background:#e4dcfb;border:1px solid #22294e;border-radius:0}
+.progress-fill{border-radius:0;background:#9a72f3;transition:width .15s ease}
+.person.compact{height:34px;min-height:34px;padding:2px 0;gap:4px;border-bottom:1px solid #dcdcf0}
+.person.compact .who{gap:5px}
+.person.compact .seq{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:#5e5c82;min-width:21px}
+.person.compact .who strong{font-size:12px;line-height:1.15}
+.person.compact .actions{gap:4px}
+.person.compact select{width:81px;min-width:81px;padding:4px 2px;height:26px;font-size:11px;border-radius:2px}
+.person.compact button{height:26px;padding:3px 5px;font-size:10px}
+#adminView>.card:last-child{padding:8px 9px}
+#adminView>.card:last-child>h2{margin-bottom:5px}
+#adminSearch{height:31px}
+#statusFilter{height:31px}
+#adminView>.card:last-child>label{margin:5px 0 3px}
+#extraStats{margin:5px 0}
+#closedChip{white-space:nowrap}
+#adminView>.card:first-of-type>.actions{margin-top:5px}
+@media(max-width:440px){main{padding:7px 7px 32px}.card{padding:8px;margin:7px 0}.person.compact{height:32px;min-height:32px}.person.compact .actions button{font-size:10px;padding:3px 4px}.person.compact select{width:78px;min-width:78px}.person.compact .who strong{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.progress-fill{transition:none}}
+
+/* v4 school operations dashboard: compact, mobile first */
+:root{background:#eef3f8;color:#172d4c;font-family:'Pretendard','Noto Sans KR',system-ui,'Malgun Gothic',sans-serif}
+body{background:#eef3f8}
+main{max-width:720px;padding:12px 10px 48px}
+h1{font-size:20px;color:#162d50;letter-spacing:-.4px;margin:3px 0}
+h2{font-size:15px;color:#172f50;letter-spacing:-.2px;margin:0 0 8px}
+.muted{color:#667a90;font-size:11px}
+.card{background:#fff;border:1px solid #dce5ee;border-radius:9px;padding:12px;margin:10px 0;box-shadow:0 2px 7px rgba(27,56,89,.045)}
+button,.btn,input,select{border:1px solid #cbd9e7;border-radius:5px;box-shadow:none;background:#fff;color:#1b3859}
+button,.btn{font-size:12px;padding:7px 10px;font-weight:650}
+button.primary{background:#1676c4;border-color:#1676c4;color:#fff}
+button:active{transform:none;box-shadow:none;background:#e9f5fa}
+input,select{padding:8px;font-size:12px}
+.tabs{gap:6px;margin:9px 0}
+label{font-size:11px;margin:7px 0 4px;color:#344c67}
+#message{min-height:0;margin:3px 0;font-size:11px}
+.row{gap:7px}
+.chip{border-radius:4px;padding:3px 6px;font-size:10px}
+.ok{background:#dff5f2;color:#08756f}
+.warn{background:#fff3d8;color:#866010}
+.stats{gap:6px}
+.stat{border:1px solid #e1eaf1;border-radius:6px;background:#f4f8fc;padding:7px 4px;font-size:10px;color:#60758b}
+.stat strong{font-size:20px;color:#1a395b;margin-top:2px}
+.actions{gap:5px}
+.actions button{padding:6px 8px;font-size:11px}
+.progress-wrap{margin:8px 0 7px;padding:9px 10px;border:1px solid #d7e5ee;border-radius:7px;background:#f4f9fc;box-shadow:none}
+.progress-top{font-size:11px;margin-bottom:6px}
+.progress-top strong{font-size:16px;color:#087f89}
+.progress-track{height:12px;background:#dcebf3;border:0;border-radius:3px}
+.progress-fill{border-radius:3px;background:linear-gradient(90deg,#148f99,#2582cf);transition:width .15s ease}
+.person.compact{height:33px;min-height:33px;padding:2px 0;gap:4px;border-bottom:1px solid #eaf0f5}
+.person.compact .who{gap:6px}
+.person.compact .seq{font:11px ui-monospace,Consolas,monospace;color:#6b8196;min-width:23px}
+.person.compact .who strong{font-size:12px;color:#203953}
+.person.compact .actions{gap:4px}
+.person.compact select{width:79px;min-width:79px;padding:3px 3px;height:26px;font-size:11px;border-radius:4px}
+.person.compact button{height:26px;padding:3px 6px;font-size:10px}
+#adminView>.card:last-child{padding:10px 11px}
+#adminSearch,#statusFilter{height:32px}
+#adminView>.card:last-child>label{margin:6px 0 4px}
+#extraStats{margin:7px 0}
+.dashboard-nav{display:flex;gap:6px;overflow-x:auto;margin:8px 0 3px;padding-bottom:2px}
+.dashboard-nav a{flex:none;text-decoration:none;background:#fff;color:#2d607e;border:1px solid #d6e3ed;border-radius:5px;font-size:11px;padding:6px 9px;font-weight:650}
+.dashboard-nav a:focus-visible{outline:2px solid #198f9e}
+#adminView .card{scroll-margin-top:12px}
+#adminView>.row{margin-top:5px}
+#adminView>.card:first-of-type>.muted{margin:7px 0 0}
+@media(max-width:440px){main{padding:9px 8px 35px}.card{padding:10px;margin:8px 0}.person.compact{height:32px;min-height:32px}.person.compact .actions button{padding:3px 4px}.person.compact select{width:77px;min-width:77px}}
+@media(prefers-reduced-motion:reduce){.progress-fill{transition:none}}
+.school-inline{color:#8995a4;font-size:10px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}.person.compact .who{min-width:0;flex:1;overflow:hidden}.person.compact .who strong{white-space:nowrap;flex:none}@media(max-width:390px){.school-inline{max-width:110px;font-size:9px}}
+
+/* v8 explicit two-step teacher boarding confirmation */
+.self-check-panel{margin-top:12px;padding:12px;background:#f7fafc;border:1px solid #d5e2ed;border-radius:7px}
+.self-check-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:15px;color:#172d4c}
+.self-school{color:#8795a5;font-size:11px;font-weight:400}
+.self-bus{margin:7px 0 12px;font-size:12px;color:#46647e}
+.self-check-label{display:flex;align-items:center;gap:10px;min-height:46px;padding:8px 10px;background:white;border:1px solid #b9d2e1;border-radius:5px;font-size:14px;font-weight:700;color:#183d5b;cursor:pointer}
+.self-check-label input{width:22px;height:22px;accent-color:#087f89;flex-shrink:0}
+.self-confirm{width:100%;margin-top:10px;min-height:44px;background:#147d91!important;border-color:#147d91!important;color:white!important;font-size:14px!important}
+.self-confirm:disabled{opacity:.42;cursor:not-allowed;background:#8b9ba9!important;border-color:#8b9ba9!important}
+.self-complete{padding:12px;background:#dff5f2;color:#08756f;font-weight:700;border-radius:5px}
+.self-closed{padding:12px;background:#fff3d8;color:#866010;border-radius:5px}
+
+.contact-actions{display:flex;gap:7px;margin:8px 0 10px}
+.contact-btn{flex:1;display:flex;align-items:center;justify-content:center;min-height:34px;border:1px solid #bfd3e2;border-radius:5px;background:#f4f9fc;color:#195474;font-size:12px;font-weight:700;text-decoration:none}
+.contact-btn[aria-disabled="true"]{color:#8a9ca9;background:#f5f7fa;cursor:not-allowed}
+.name-candidates{display:grid;gap:5px;margin-top:8px}.name-candidates button{text-align:left;background:#f4f8fc;border:1px solid #d7e2ed;padding:10px 12px;border-radius:6px;color:#203b55}.name-candidates button strong{font-size:15px}.name-candidates button span{font-size:12px;color:#708194;margin-left:9px}
+/* v15: one-tap boarding and independent exception menu */
+.person.compact .actions .board-toggle{min-width:74px;height:28px;border:1px solid #b6c8d7;background:#f3f6f9;color:#2a4a65;border-radius:5px;font-size:11px;font-weight:700}
+.person.compact .actions .board-toggle.is-boarded{background:#0b827e;border-color:#0b827e;color:white}
+.person.compact .actions .board-toggle.is-exception{background:#eaf0f5;color:#526579}
+.person.compact .actions .exception-toggle{width:29px;height:28px;padding:2px 0;border:1px solid #d0dce7;background:#fff;border-radius:5px;font-size:17px}
+.person.compact .actions .board-toggle:disabled,.person.compact .actions .exception-toggle:disabled{opacity:.55}
+.exception-menu{display:flex;gap:5px;flex-wrap:wrap;padding:5px 0 7px 28px;background:#f5f8fc}
+.exception-menu button{border:1px solid #c7d7e5;background:#fff;border-radius:5px;font-size:11px;padding:5px 9px}
+.person.compact .actions .saving-mark{font-size:10px;color:#7c5c11;white-space:nowrap}
+.self-saving{padding:12px;background:#edf5ff;border:1px solid #c5d9ee;border-radius:6px;color:#234b70;font-weight:650;font-size:13px}
+.self-saving small{display:block;color:#657a8d;font-size:11px;font-weight:400;margin-top:5px}
+.self-done{padding:12px;background:#e6f6f0;border-radius:6px;color:#126c51;font-weight:700}
+/* v16: reset is a separate, cautious operation */
+.reset-stop-btn{background:#fff5ed!important;border:1px solid #e9bd9c!important;color:#8b4a1e!important;font-size:12px!important}
+.reset-stop-btn:disabled{opacity:.45}
+
+
+/* v17 — festive but restrained; retains v16 functionality */
+:root{--ink:#273b55;--coral:#ee7770;--teal:#148d87;--soft:#fff9f6;--border:#e9e6e4;color:var(--ink);background:#fbfaf8}
+body{background:linear-gradient(180deg,#fffdfb 0,#faf8f6 330px,#f7f8fa 100%);color:var(--ink)}
+main{max-width:720px;padding:0 12px 48px}
+.festive-garland{height:31px;display:flex;justify-content:space-between;align-items:flex-start;overflow:hidden;position:relative;margin:0 0 10px;pointer-events:none}
+.festive-garland svg{display:block;width:110px;height:30px;flex:none}
+.page-head{padding:4px 2px 13px;border-bottom:1px solid #f0e8e3;margin-bottom:8px}
+.page-head .muted{font-size:11px;color:#8d8390;letter-spacing:.15px}
+h1{font-size:21px;letter-spacing:-.65px;color:#28364d;margin:5px 0 1px;font-weight:800}
+h2{color:#30445b;font-size:15px}
+#modeBtn{background:#fff;border:1px solid #e7deda;color:#665d69;border-radius:20px;padding:8px 12px;font-size:12px}
+.card{border:1px solid #ebe7e5;border-radius:15px;background:#fff;box-shadow:0 5px 16px rgba(50,52,70,.045);padding:16px;margin:12px 0}
+button,.btn,input,select{border-radius:9px;border-color:#e1e5ea;box-shadow:none;color:#34465b}
+button,.btn{min-height:35px;font-weight:700}
+button.primary{background:#e87570;border-color:#e87570;color:#fff}
+button.primary:hover{background:#db6965}
+button:active{background:#fff2ef;transform:none}
+input,select{background:#fbfcfd;border:1px solid #e3e7eb;font-size:13px;min-height:39px}
+input:focus,select:focus{outline:2px solid #f8c3b6;outline-offset:1px}
+.tabs{background:#f6f4f3;border:1px solid #eee8e4;border-radius:12px;padding:4px;gap:4px;margin:12px 0}
+.tabs button{border:0;border-radius:9px;min-height:37px;background:transparent;color:#7a7981;box-shadow:none}
+.tabs button.primary{background:#fff;color:#d85f59;border:1px solid #f1ded9;box-shadow:0 2px 5px #4d3d3010}
+.muted{color:#83909e;font-size:12px;line-height:1.55}
+#message:not(:empty){border-radius:9px;padding:8px 10px;margin:7px 0;background:#f2f8f6}
+#message.error{background:#fff0ef;color:#bb5754}
+#message.success{color:#237a6c}
+.contact-actions{gap:8px;margin:10px 0}
+.contact-btn{min-height:39px;border-radius:10px;border:1px solid #e7e4e1;background:#fff;color:#526277;font-size:12px}
+.self-check-panel{border:1px solid #e9e7e4;border-radius:12px;background:#fffaf8;padding:14px}
+.self-check-title{color:#28394d}.self-bus{color:#68798b}
+.self-check-label{border-radius:10px;border-color:#e8ded9;background:#fff;color:#354b60}
+.self-check-label input{accent-color:#e87570}
+.self-confirm{background:#e87570!important;border-color:#e87570!important;border-radius:10px!important;min-height:46px}
+.self-confirm:disabled{background:#b7b9bf!important;border-color:#b7b9bf!important}
+.self-done{border-radius:10px;background:#eaf8f3;color:#167c66}
+.self-saving{border-radius:10px;background:#f0f5fa}
+.name-candidates button{background:#fff;border:1px solid #eee7e4;border-radius:9px;min-height:39px}
+.dashboard-nav a{border-radius:18px;background:#fff;color:#7b6471;border-color:#eadfe0}
+.stats{gap:7px}.stat{border:1px solid #f0e9e6;background:#fcfaf9;border-radius:10px;padding:9px 5px}
+.stat strong{color:#30465e;font-size:20px}
+.progress-wrap{background:#fff9f6;border:1px solid #f1e5de;border-radius:11px;padding:12px}
+.progress-top strong{color:#c86b66}.progress-track{height:10px;border-radius:20px;background:#f1e8e3}
+.progress-fill{background:linear-gradient(90deg,#e6a39b,#dc7770);border-radius:20px}
+.chip{border-radius:18px;padding:4px 8px}.ok{background:#e9f7f2;color:#168371}.warn{background:#fff2e6;color:#b3784b}
+.person.compact{height:40px;min-height:40px;border-bottom:1px solid #f1efed}
+.person.compact .who strong{color:#334357;font-size:12px}
+.school-inline{color:#9aa1a8}
+.board-toggle{border-radius:8px!important}.board-toggle.is-boarded{background:#e7f5ed!important;border-color:#acd8c0!important;color:#16724c!important}
+.exception-toggle{border-radius:8px!important}
+.exception-menu{background:#fffaf7;border-radius:10px}
+.reset-stop-btn{background:#fff7f0!important;border:1px solid #f0d5c2!important;color:#a76943!important;border-radius:9px!important}
+@media(max-width:440px){main{padding:0 10px 35px}.festive-garland{margin:0 0 9px}.card{padding:13px;margin:10px 0}.page-head{padding-bottom:11px}.person.compact{height:39px;min-height:39px}.person.compact .actions button{padding:4px 6px}}
+</style></head><body><main><div class="festive-garland"><svg viewBox="0 0 110 30" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M0 4 Q55 11 110 4" stroke="#e9dfe1" stroke-width="1.3" fill="none"/><path d="M5 5 L24 5 L14.5 25 Z" fill="#ffd8e2"/><path d="M30 5 L49 5 L39.5 25 Z" fill="#c8efdc"/><path d="M55 5 L74 5 L64.5 25 Z" fill="#ffe4ac"/><path d="M80 5 L99 5 L89.5 25 Z" fill="#dcd5fa"/></svg><svg viewBox="0 0 110 30" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M0 4 Q55 11 110 4" stroke="#e9dfe1" stroke-width="1.3" fill="none"/><path d="M5 5 L24 5 L14.5 25 Z" fill="#ffd8e2"/><path d="M30 5 L49 5 L39.5 25 Z" fill="#c8efdc"/><path d="M55 5 L74 5 L64.5 25 Z" fill="#ffe4ac"/><path d="M80 5 L99 5 L89.5 25 Z" fill="#dcd5fa"/></svg></div><div class="row page-head"><div><div class="muted">2026 교직원 워크숍 · 출발/귀가 탑승 관리</div><h1>워크숍 버스 탑승 확인</h1></div><button id="modeBtn" onclick="toggleMode()">관리자</button></div><p id="message" role="status"></p>
+<div id="selfView"><div class="tabs"><button id="selfOut" class="primary" onclick="choosePhase('출발')">출발 탑승</button><button id="selfBack" onclick="choosePhase('귀가')">귀가 탑승</button></div><div id="topContact" class="contact-actions hidden" aria-label="호차 관리자 연락"><a id="topCall" class="contact-btn" href="#">☎ 관리자 전화</a><a id="topSms" class="contact-btn" href="#">✉ 관리자 문자</a></div><div class="card"><h2>내 이름으로 탑승 확인</h2><p class="muted">이름으로 본인 정보를 확인한 뒤, 실제 탑승 시 체크해 주세요. 조회만으로 탑승 처리되지 않습니다.</p><div class="row" id="selfSearchRow"><input id="search" oninput="showNameCandidates()" placeholder="이름 3글자" maxlength="3" autocomplete="off"><button class="primary" onclick="lookupSelf()">내 정보 확인</button></div><div id="nameCandidates" class="name-candidates"></div><div id="selfList"></div><button id="resetSelfBtn" class="hidden" onclick="resetSelfLookup()" style="margin-top:12px">다른 이름 조회</button></div></div>
+<div id="loginView" class="hidden"><div class="card"><h2>관리자 로그인</h2><label>담당 구분</label><select id="role"><option value="1">1호차 관리자</option><option value="2">2호차 관리자</option><option value="master">총괄 관리자</option></select><label>비밀번호</label><input id="password" type="password" placeholder="관리자 비밀번호"><button class="primary" style="width:100%;margin-top:14px" onclick="signIn()">로그인</button><p class="muted">비밀번호 오류 5회 시 15분간 로그인이 제한됩니다. 담당 버스만 수정할 수 있습니다. 버스 변경은 총괄 관리자 전용입니다.</p></div></div>
+<div id="adminView" class="hidden"><nav class="dashboard-nav" aria-label="관리 화면 바로가기"><a href="#dashboardSummary">탑승 현황</a><a href="#dashboardRoster">탑승 명단</a></nav><div class="row"><h2 id="adminTitle">탑승 관리</h2><button onclick="signOut()">로그아웃</button></div><div class="tabs"><button id="adminOut" class="primary" onclick="choosePhase('출발')">출발</button><button id="adminBack" onclick="choosePhase('귀가')">귀가</button></div><div id="masterBus" class="hidden"><label>관리 버스</label><select id="busChoice" onchange="renderAdmin()"><option value="1">1호차</option><option value="2">2호차</option></select></div><div class="card" id="dashboardSummary"><div class="row"><h2 id="busTitle">1호차</h2><span id="closedChip" class="chip"></span></div><div id="boardingProgress" class="progress-wrap" aria-live="polite"></div><div id="stats" class="stats"></div><p class="muted" id="extraStats"></p><div class="actions"><button onclick="setClosedAction()" id="closeBtn">체크 마감</button><button onclick="setFinalAction()" id="finalBtn">최종 확인</button><button onclick="refreshAdmin()">새로고침</button><button id="resetStopBtn" class="reset-stop-btn" onclick="resetStopAction()">전체 미탑승 초기화</button></div><p class="muted">체크를 마감하고 현장에서 실제 인원을 대조한 뒤 최종 확인을 눌러주세요.</p><div class="actions"><button onclick="diagnoseSpeed()">속도 진단</button><span id="speedInfo" class="muted" aria-live="polite"></span></div></div><div class="card" id="dashboardRoster"><h2>탑승 명단</h2><input id="adminSearch" placeholder="이름 또는 부서 검색" oninput="renderAdmin()"><label>상태 필터</label><select id="statusFilter" onchange="renderAdmin()"><option value="전체">전체</option><option value="미탑승">미탑승</option><option value="탑승">탑승</option><option value="불참">불참</option><option value="개별이동">개별 이동</option></select><div id="adminList"></div></div></div></main>
+<script>
+let phase='출발',mode='self',token='',role='',publicPeople=[],adminData=null;let pendingActions=new Set(),latestLookup=0,latestAdmin=0;const lookupCache=new Map(),dashboardCache=new Map();let nameDirectory=[];let exceptionMenuId=null;const selfPending=new Set();const $=id=>document.getElementById(id);const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function call(name,...args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args));}
+function clone(v){return JSON.parse(JSON.stringify(v));}
+function localAdminKey(){return phase+'|'+role;}
+function markPending(key,on){if(on)pendingActions.add(key);else pendingActions.delete(key);}
+function clearLocalCaches(){lookupCache.clear();dashboardCache.clear();}
+function msg(t,bad=false){$('message').textContent=t;$('message').className=bad?'error':'success';}
+async function run(fn){try{msg('처리 중...');await fn();msg('완료되었습니다.');}catch(e){msg(e.message||String(e),true);}}
+async function preloadNames(){try{nameDirectory=await call('getNameDirectory');showNameCandidates();}catch(e){/* 이름 직접 입력은 계속 사용 가능 */}}
+function showNameCandidates(){latestLookup++;publicPeople=[];$('topContact').classList.add('hidden');$('selfList').innerHTML='';const q=$('search').value.trim();$('nameCandidates').innerHTML=!q?'':nameDirectory.filter(p=>p.name.includes(q)).slice(0,12).map(p=>`<button onclick="selectName('${safe(p.name)}')"><strong>${safe(p.name)}</strong><span>${safe(p.dept)}</span></button>`).join('');}
+function selectName(name){$('search').value=name;$('nameCandidates').innerHTML='';lookupSelf();}
+function resetSelfLookup(){$('selfSearchRow').classList.remove('hidden');$('resetSelfBtn').classList.add('hidden');$('search').value='';loadPublic();$('search').focus();}
+function toggleMode(){mode=mode==='self'?'login':'self';drawMode();if(mode==='self')loadPublic();}
+function drawMode(){ $('selfView').classList.toggle('hidden',mode!=='self');$('loginView').classList.toggle('hidden',mode!=='login');$('adminView').classList.toggle('hidden',mode!=='admin');$('modeBtn').textContent=mode==='self'?'관리자':'교직원 화면';}
+function choosePhase(p){if(phase===p)return;if(pendingActions.size){msg('관리자 변경사항 저장 중입니다. 잠시 기다려 주세요.',true);return;}phase=p;['selfOut','adminOut'].forEach(id=>$(id).classList.toggle('primary',p==='출발'));['selfBack','adminBack'].forEach(id=>$(id).classList.toggle('primary',p==='귀가'));if(mode==='admin'){const cached=dashboardCache.get(localAdminKey());if(cached){adminData=clone(cached.data);renderAdmin();if(Date.now()-cached.at>12000)refreshAdmin();}else refreshAdmin();}else loadPublic();}
+async function loadPublic(){latestLookup++;publicPeople=[];$('selfSearchRow').classList.remove('hidden');$('resetSelfBtn').classList.add('hidden');$('topContact').classList.add('hidden');$('nameCandidates').innerHTML='';$('selfList').innerHTML='<p class="muted">이름을 입력하면 실명 후보가 표시됩니다. 본인 이름을 선택해 주세요.</p>';}
+async function lookupSelf(){
+ const name=$('search').value.trim(),requestPhase=phase,request=++latestLookup;
+ if(!/^[가-힣]{3}$/.test(name)){msg('실제 이름 3글자를 입력해 주세요.',true);return;}
+ const key=requestPhase+'|'+name,cached=lookupCache.get(key);
+ if(cached&&Date.now()-cached.at<10000){publicPeople=clone(cached.data);renderSelf();msg('조회되었습니다.');return;}
+ $('selfList').innerHTML='<p class="muted">명단 확인 중…</p>';msg('조회 중…');
+ try{const data=await call('findMyName',name,requestPhase);if(request!==latestLookup||phase!==requestPhase)return;
+ publicPeople=data;lookupCache.set(key,{data:clone(data),at:Date.now()});renderSelf();msg('조회되었습니다.');
+ }catch(e){if(request===latestLookup)msg(e.message||String(e),true);}
+}
+function renderSelf(){
+ const a=publicPeople;
+ if(a.length){$('selfSearchRow').classList.add('hidden');$('nameCandidates').innerHTML='';$('resetSelfBtn').classList.remove('hidden');}else{$('selfSearchRow').classList.remove('hidden');$('resetSelfBtn').classList.add('hidden');}
+ // One contact bar only, above the roster. Hide for ambiguous bus matches.
+ const buses=[...new Set(a.map(p=>String(p.bus)))];
+ const phone=(a.length&&buses.length===1)?String(a[0].contact||'').replace(/[^0-9+]/g,''):'';
+ $('topContact').classList.toggle('hidden',!phone);
+ $('topCall').href=phone?'tel:'+phone:'#';
+ $('topSms').href=phone?'sms:'+phone:'#';
+ $('selfList').innerHTML=!a.length?'<p class="muted">일치하는 명단이 없습니다. 이름을 확인하거나 담당자에게 문의하세요.</p>':a.map(p=>`<div class="self-check-panel"><div class="self-check-title"><strong>${safe(p.name)}</strong><span class="self-school">${safe(p.dept)}</span></div><div class="self-bus">${p.bus}호차 · ${phase} · <strong>${safe(p.status)}</strong></div>${selfPending.has(p.id)?'<div class="self-saving">탑승 확인 요청됨<small>구글 시트에 저장 중입니다. 완료 안내가 나올 때까지 기다려 주세요.</small></div>':p.status==='탑승'?'<div class="self-done">✓ 탑승 확인 완료 · 저장됨</div>':p.status!=='미탑승'?'<div class="self-closed">현재 상태: '+safe(p.status)+' · 관리자에게 문의하세요.</div>':p.closed?'<div class="self-closed">탑승 확인이 마감되었습니다. 담당자에게 문의하세요.</div>':`<label class="self-check-label"><input type="checkbox" id="selfAgree_${safe(p.id)}" onchange="toggleSelfCheck('${safe(p.id)}')"><span>버스에 탑승했습니다.</span></label><button class="self-confirm" id="selfConfirm_${safe(p.id)}" disabled onclick="selfAction('${safe(p.id)}')">탑승 확인 완료하기</button>`}</div>`).join('');
+}
+function toggleSelfCheck(id){const c=document.getElementById('selfAgree_'+id),b=document.getElementById('selfConfirm_'+id);if(c&&b)b.disabled=!c.checked;}
+async function selfAction(id){
+ const p=publicPeople.find(x=>x.id===id),name=$('search').value.trim(),check=document.getElementById('selfAgree_'+id);
+ if(!p||!check||!check.checked){msg('버스에 탑승한 후 체크해 주세요.',true);return;}
+ if(selfPending.has(id))return;
+ const requestPhase=phase;
+ selfPending.add(id);renderSelf();msg('탑승 확인 요청됨 · 저장 중…');
+ try{
+   await call('selfCheck',name,id,requestPhase);
+   clearLocalCaches();
+   if(phase===requestPhase){const current=publicPeople.find(x=>x.id===id);if(current){current.status='탑승';}msg('탑승 확인이 저장되었습니다.');}
+ }catch(e){
+   if(phase===requestPhase)msg('저장 실패: '+(e.message||String(e))+' · 다시 시도해 주세요.',true);
+ }finally{
+   selfPending.delete(id);
+   if(phase===requestPhase)renderSelf();
+ }
+}
+async function signIn(){await run(async()=>{const result=await call('loginWithDashboard',$('role').value,$('password').value,phase);const r=result.session;token=r.token;role=r.role;mode='admin';$('password').value='';$('masterBus').classList.toggle('hidden',role!=='master');$('busChoice').value=role==='master'?'1':role;adminData=result.data;dashboardCache.set(localAdminKey(),{data:clone(adminData),at:Date.now()});drawMode();renderAdmin();});}
+function currentBus(){return Number(role==='master'?$('busChoice').value:role);}
+async function signOut(){if(token)await call('logout',token).catch(()=>{});token='';role='';mode='self';adminData=null;clearLocalCaches();drawMode();loadPublic();}
+async function refreshAdmin(){if(pendingActions.size){msg('변경사항 저장 중입니다. 저장 완료 후 새로고침해 주세요.');return;}const requestedPhase=phase,request=++latestAdmin;
+ try{const data=await call('dashboard',token,requestedPhase);if(request!==latestAdmin||phase!==requestedPhase||mode!=='admin')return;
+ adminData=data;dashboardCache.set(localAdminKey(),{data:clone(data),at:Date.now()});renderAdmin();msg('최신 현황을 불러왔습니다.');
+ }catch(e){if(request===latestAdmin){msg(e.message||String(e),true);if(String(e.message).includes('만료'))signOut();}}}
+function cacheCurrentDashboard(){dashboardCache.set(localAdminKey(),{data:clone(adminData),at:Date.now()});}
+async function mutateFast(key,fn,apply){if(pendingActions.size){msg('이전 변경을 저장 중입니다. 잠시 기다려 주세요.',true);return;}
+ markPending(key,true);msg('변경사항 저장 중…');const start=performance.now();
+ try{const response=await fn();apply(response);cacheCurrentDashboard();renderAdmin();msg('저장 완료 · '+((performance.now()-start)/1000).toFixed(1)+'초');}
+ catch(e){msg('저장 실패: '+(e.message||String(e)),true);renderAdmin();}
+ finally{markPending(key,false);}}
+async function diagnoseSpeed(){if(!token)return;const el=$('speedInfo');el.textContent='측정 중…';const start=performance.now();try{const r=await call('speedDiagnostic',token,phase);const elapsed=Math.round(performance.now()-start);el.textContent='전체 '+elapsed+'ms / 서버 '+r.serverMs+'ms / 명단 '+r.peopleMs+'ms / 기록 '+r.recordsMs+'ms';}catch(e){el.textContent='진단 실패: '+(e.message||String(e));}}
+function renderAdmin(){if(!adminData)return;const b=currentBus(),s=adminData.settings[phase+'|'+b]||{},a=adminData.people.filter(p=>p.bus===b),n=st=>a.filter(p=>p.status===st).length; $('adminTitle').textContent=(role==='master'?'총괄 관리자':b+'호차 관리자')+' · '+phase;$('busTitle').textContent=b+'호차 탑승 현황';$('closedChip').textContent=s.closed?'체크 마감':'체크 진행 중';$('closedChip').className='chip '+(s.closed?'warn':'ok');$('stats').innerHTML=`<div class="stat">탑승 대상<strong>${a.length-n('불참')-n('개별이동')}</strong></div><div class="stat">탑승 완료<strong>${n('탑승')}</strong></div><div class="stat">미탑승<strong>${n('미탑승')}</strong></div>`;$('extraStats').textContent=`불참 ${n('불참')}명 · 개별 이동 ${n('개별이동')}명 · ${s.final?'최종 확인 완료':'최종 확인 전'}`;$('closeBtn').textContent=s.closed?'체크 재개':'체크 마감';$('finalBtn').textContent=s.final?'최종 확인 해제':'최종 확인';$('finalBtn').disabled=!s.final&&(n('미탑승')>0||!s.closed);$('resetStopBtn').disabled=pendingActions.size>0;
+const boarded=n('탑승'), total=a.length, pct=total?Math.round(boarded/total*100):0;
+$('boardingProgress').innerHTML=`<div class="progress-top"><span><strong>${boarded}</strong> / ${total}명 탑승</span><strong>${pct}%</strong></div><div class="progress-track" role="progressbar" aria-label="${b}호차 탑승률" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+const q=$('adminSearch').value.trim(),f=$('statusFilter').value;
+const filtered=a.map((p,i)=>({...p,seq:i+1})).filter(p=>(!q||p.name.includes(q)||p.dept.includes(q))&&(f==='전체'||p.status===f));
+$('adminList').innerHTML=filtered.length?filtered.map(p=>{
+ const locked=!!(s.closed||s.final),busy=pendingActions.has('status:'+phase+':'+p.id);
+ const exception=p.status==='불참'||p.status==='개별이동';
+ const label=p.status==='탑승'?'✓ 탑승':exception?p.status==='개별이동'?'개별':'불참':'미탑승';
+ const boardClass=p.status==='탑승'?'is-boarded':exception?'is-exception':'';
+ const buttons=locked?`<span class="chip warn">${safe(p.status)} · 잠금</span>`:
+ `<button class="board-toggle ${boardClass}" aria-label="${safe(p.name)} 탑승 상태 전환" ${busy?'disabled':''} onclick="toggleBoarding('${safe(p.id)}')">${busy?'저장 중…':label}</button><button class="exception-toggle" aria-label="${safe(p.name)} 불참 및 개별이동" ${busy?'disabled':''} onclick="toggleException('${safe(p.id)}')">⋯</button>`;
+ const menu=(!locked&&exceptionMenuId===p.id)?`<div class="exception-menu"><button onclick="statusAction('${safe(p.id)}','불참')">불참</button><button onclick="statusAction('${safe(p.id)}','개별이동')">개별이동</button><button onclick="statusAction('${safe(p.id)}','미탑승')">미탑승 복원</button></div>`:'';
+ return `<div class="person compact"><div class="who"><span class="seq">${p.seq}.</span><strong>${safe(p.name)}</strong><span class="school-inline">${safe(String(p.dept||'').split(' / ')[0].trim())}</span></div><div class="actions">${buttons}${role==='master'?`<button onclick="moveAction('${safe(p.id)}')">호차↔</button>`:''}</div></div>${menu}`;
+ }).join(''):'<p class="muted">해당 인원이 없습니다.</p>';}
+function toggleException(id){exceptionMenuId=exceptionMenuId===id?null:id;renderAdmin();}
+function toggleBoarding(id){const p=adminData?.people.find(x=>x.id===id);if(!p)return;statusAction(id,p.status==='탑승'?'미탑승':'탑승');}
+
+async function statusAction(id,v){
+ if(!v||!adminData)return;
+ if([...pendingActions].some(k=>k.startsWith('reset:'))){msg('초기화가 진행 중입니다.',true);return;}
+ const p=adminData.people.find(x=>x.id===id);
+ if(!p||p.status===v)return;
+ const requestPhase=phase,requestData=adminData,key='status:'+requestPhase+':'+id;
+ if(pendingActions.has(key))return;
+ const oldStatus=p.status;
+ pendingActions.add(key);exceptionMenuId=null;
+ p.status=v;renderAdmin();msg('변경사항 저장 중…');
+ try{
+   await call('quickSetStatus',token,id,requestPhase,v);
+   if(adminData===requestData){cacheCurrentDashboard();msg('탑승 상태가 저장되었습니다.');}
+ }catch(e){
+   if(adminData===requestData){p.status=oldStatus;msg('저장 실패 · 이전 상태로 복원했습니다: '+(e.message||String(e)),true);}
+ }finally{
+   pendingActions.delete(key);
+   if(adminData===requestData&&phase===requestPhase)renderAdmin();
+ }
+}
+async function resetStopAction(){
+ if(!adminData||!token)return;
+ if(pendingActions.size||selfPending.size){msg('저장 중인 작업이 있습니다. 완료 후 초기화해 주세요.',true);return;}
+ const b=currentBus(),requestPhase=phase;
+ const first=`${b}호차 · ${requestPhase} 탑승 현황을 전원 미탑승으로 초기화할까요?\n\n중간 정차 후 재탑승을 확인할 때 사용합니다. 기존 탑승·불참·개별이동 상태가 모두 미탑승으로 바뀌며, 마감과 최종 확인도 해제됩니다. 다른 호차와 다른 구간은 유지됩니다.`;
+ if(!confirm(first))return;
+ if(!confirm(`최종 확인: ${b}호차 ${requestPhase}의 모든 탑승 상태를 초기화합니다. 진행할까요?`))return;
+ const key='reset:'+requestPhase+':'+b;
+ pendingActions.add(key);renderAdmin();msg('초기화 중… 저장이 완료될 때까지 기다려 주세요.');
+ try{
+  const r=await call('resetBoardingForStop',token,requestPhase,b);
+  dashboardCache.clear();lookupCache.clear();
+  // 서버 기록을 다시 읽어 동기화: 다른 관리자 변경까지 정확히 반영
+  const data=await call('dashboard',token,requestPhase);
+  if(phase===requestPhase&&mode==='admin'){
+   adminData=data;cacheCurrentDashboard();
+   msg(`${b}호차 ${requestPhase}: ${r.count}명 미탑승으로 초기화 완료. 다시 체크할 수 있습니다.`);
+  }
+ }catch(e){msg('초기화 실패: '+(e.message||String(e))+' · 새로고침 후 상태를 확인해 주세요.',true);}
+ finally{pendingActions.delete(key);if(mode==='admin')renderAdmin();}
+}
+async function setClosedAction(){const b=currentBus(),s=adminData.settings[phase+'|'+b];if(!confirm(`${b}호차 ${phase} 체크를 ${s.closed?'재개':'마감'}할까요?`))return;await mutateFast('closed:'+b,()=>call('quickSetClosed',token,phase,b,!s.closed),r=>{adminData.settings[phase+'|'+b].closed=r.closed;});}
+async function setFinalAction(){const b=currentBus(),s=adminData.settings[phase+'|'+b];if(!confirm(`${b}호차 ${phase} 최종 확인을 ${s.final?'해제':'완료'}할까요?`))return;await mutateFast('final:'+b,()=>call('quickSetFinal',token,phase,b,!s.final),r=>{adminData.settings[phase+'|'+b].final=r.final;});}
+async function moveAction(id){const p=adminData.people.find(x=>x.id===id),next=p.bus===1?2:1;if(!confirm(`${p.name} 선생님을 ${phase} ${next}호차로 변경할까요?`))return;await mutateFast('move:'+id,()=>call('quickMoveBus',token,id,phase,next),r=>{p.bus=r.bus;});}
+loadPublic();
+
+preloadNames();
+</script></body></html>
