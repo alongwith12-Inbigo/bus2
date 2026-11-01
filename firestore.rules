@@ -69,6 +69,16 @@ service cloud.firestore {
         (!('detail' in data) || (data.detail is string && data.detail.size() <= 10000));
     }
 
+    // AdminAuth validator
+    function isValidAdminAuth(data) {
+      return data.keys().hasAll(['role', 'salt', 'hash']) &&
+        data.keys().hasOnly(['role', 'salt', 'hash', 'updatedAt']) &&
+        (data.role == '1' || data.role == '2' || data.role == 'master') &&
+        data.salt is string && data.salt.size() <= 128 &&
+        data.hash is string && data.hash.size() <= 256 &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
     // Match People collection: workshop participants
     match /people/{personId} {
       allow read: if true;
@@ -102,6 +112,13 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isValidId(logId) && isValidLog(incoming());
       allow update, delete: if false; // Append-only audit log
+    }
+
+    // Match AdminAuth collection: multi-device password hash sync
+    match /admin_auth/{roleId} {
+      allow read: if true;
+      allow create, update: if isValidId(roleId) && isValidAdminAuth(incoming());
+      allow delete: if false;
     }
 
     // Default deny catch-all for any other collections

@@ -153,6 +153,34 @@
         }
       },
       "required": ["id", "timestamp", "role", "action"]
+    },
+    "AdminAuth": {
+      "title": "AdminAuth",
+      "description": "Administrator password hashes and salt credentials",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "Admin role identifier (1, 2, master)",
+          "enum": ["1", "2", "master"]
+        },
+        "salt": {
+          "type": "string",
+          "description": "Cryptographic salt",
+          "maxLength": 128
+        },
+        "hash": {
+          "type": "string",
+          "description": "Salted SHA-256 password hash",
+          "maxLength": 256
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update",
+          "maxLength": 64
+        }
+      },
+      "required": ["role", "salt", "hash"]
     }
   },
   "firestore": {
@@ -175,6 +203,10 @@
     "/logs/{logId}": {
       "schema": "Log",
       "description": "Audit history and change logs"
+    },
+    "/admin_auth/{roleId}": {
+      "schema": "AdminAuth",
+      "description": "Admin authentication credentials"
     }
   }
 }

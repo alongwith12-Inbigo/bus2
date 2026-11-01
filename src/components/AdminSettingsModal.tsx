@@ -77,10 +77,15 @@ export function AdminSettingsModal({
     setErrorMsg(null);
     try {
       await updateAdminPassword(pwRole, newPw);
-      onSuccess(`${pwRole === 'master' ? '총괄' : pwRole + '호차'} 관리자 비밀번호가 변경되었습니다.`);
+      onSuccess(`${pwRole === 'master' ? '총괄' : pwRole + '호차'} 관리자 비밀번호가 클라우드에 저장되었습니다. (모든 기기에 즉시 적용)`);
       setNewPw('');
     } catch (e: any) {
-      setErrorMsg(e.message || String(e));
+      let rawMsg = e.message || String(e);
+      try {
+        const parsed = JSON.parse(rawMsg);
+        if (parsed.error) rawMsg = parsed.error;
+      } catch {}
+      setErrorMsg('비밀번호 변경 실패: ' + rawMsg);
     } finally {
       setSaving(false);
     }

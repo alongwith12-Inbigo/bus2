@@ -1,8 +1,12 @@
 import { AdminRole } from '../types';
+import { doc, getDocFromServer, setDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from './firebase';
 
-interface AuthStorageState {
+interface AuthRecord {
+  role: AdminRole;
   salt: string;
   hash: string;
+  updatedAt?: string;
 }
 
 interface FailedAttemptState {
@@ -16,6 +20,15 @@ const DEFAULT_CREDENTIALS: Record<AdminRole, string> = {
   '2': '2222',
   'master': '0000'
 };
+
+const STORAGE_KEY_FAILS = 'workshop_bus_fails_v3';
+const STORAGE_KEY_SESSION = 'workshop_bus_session_v3';
+
+export interface AdminSession {
+  token: string;
+  role: AdminRole;
+  expiresAt: number;
+}
 
 async function sha256(text: string): Promise<string> {
   const enc = new TextEncoder().encode(text);
@@ -33,35 +46,30 @@ async function hashWithSalt(salt: string, password: string): Promise<string> {
   return h;
 }
 
-const STORAGE_KEY_AUTH = 'workshop_bus_auth_v2';
-const STORAGE_KEY_FAILS = 'workshop_bus_fails_v2';
-const STORAGE_KEY_SESSION = 'workshop_bus_session_v2';
+// Fetch auth record directly from Firestore (cloud-synced across all devices)
+async function getRoleAuth(role: AdminRole): Promise<AuthRecord> {
+  try {
+    const ref = doc(db, 'admin_auth', role);
+    const snap = await getDocFromServer(ref);
 
-export interface AdminSession {
-  token: string;
-  role: AdminRole;
-  expiresAt: number;
-}
-
-async function getStoredAuth(): Promise<Record<AdminRole, AuthStorageState>> {
-  const raw = localStorage.getItem(STORAGE_KEY_AUTH);
-  if (raw) {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      // fallback
+    if (snap.exists()) {
+      return snap.data() as AuthRecord;
     }
-  }
 
-  // Initialize with default salts & hashes
-  const initial: Record<AdminRole, AuthStorageState> = {} as any;
-  for (const role of ['1', '2', 'master'] as AdminRole[]) {
+    // If not created yet in Firestore, initialize with default PIN
     const salt = crypto.randomUUID();
     const hash = await hashWithSalt(salt, DEFAULT_CREDENTIALS[role]);
-    initial[role] = { salt, hash };
+    const initialRecord: AuthRecord = {
+      role,
+      salt,
+      hash,
+      updatedAt: new Date().toISOString()
+    };
+    await setDoc(ref, initialRecord);
+    return initialRecord;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, `admin_auth/${role}`);
   }
-  localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(initial));
-  return initial;
 }
 
 export async function loginAdmin(role: AdminRole, passwordInput: string): Promise<AdminSession> {
@@ -75,13 +83,10 @@ export async function loginAdmin(role: AdminRole, passwordInput: string): Promis
     throw new Error(`로그인 시도가 많습니다. ${remainMin}분 후 다시 시도하세요.`);
   }
 
-  const authRecords = await getStoredAuth();
-  const target = authRecords[role];
-  if (!target) {
-    throw new Error('관리자 인증 정보가 설정되지 않았습니다.');
-  }
-
+  // Get cloud-synced credential from Firestore
+  const target = await getRoleAuth(role);
   const computed = await hashWithSalt(target.salt, passwordInput.trim());
+
   if (computed !== target.hash) {
     const recent = failInfo.last && now - failInfo.last < 15 * 60 * 1000;
     const newCount = (recent ? failInfo.count : 0) + 1;
@@ -127,16 +132,41 @@ export function logoutAdmin(): void {
   sessionStorage.removeItem(STORAGE_KEY_SESSION);
 }
 
+// Update password in Firestore so all devices (phones, PCs, tablets) are instantly synchronized
 export async function updateAdminPassword(
   role: AdminRole,
   newPassword: string
 ): Promise<void> {
-  if (!newPassword || newPassword.length < 4) {
+  const trimmed = newPassword.trim();
+  if (!trimmed || trimmed.length < 4) {
     throw new Error('비밀번호는 최소 4자리 이상이어야 합니다.');
   }
-  const authRecords = await getStoredAuth();
+
   const salt = crypto.randomUUID();
-  const hash = await hashWithSalt(salt, newPassword.trim());
-  authRecords[role] = { salt, hash };
-  localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(authRecords));
+  const hash = await hashWithSalt(salt, trimmed);
+  const now = new Date().toISOString();
+
+  const record: AuthRecord = {
+    role,
+    salt,
+    hash,
+    updatedAt: now
+  };
+
+  try {
+    // Save to Firestore admin_auth collection
+    await setDoc(doc(db, 'admin_auth', role), record);
+
+    // Audit log
+    const logId = 'pw_' + Date.now();
+    await setDoc(doc(db, 'logs', logId), {
+      id: logId,
+      timestamp: now,
+      role: '관리자',
+      action: '비밀번호변경',
+      detail: `${role === 'master' ? '총괄 관리자' : role + '호차 관리자'} 비밀번호가 클라우드에 갱신되었습니다.`
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `admin_auth/${role}`);
+  }
 }
