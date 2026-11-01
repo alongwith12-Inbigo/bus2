@@ -603,87 +603,53 @@ export default function App() {
       {/* ---------------- 3. ADMIN DASHBOARD VIEW ---------------- */}
       {mode === 'admin' && adminSession && (
         <div id="adminView">
-          {/* Top Admin Bar */}
+          {/* Top Admin Row */}
           <div className="row" style={{ marginBottom: '8px' }}>
-            <span className="muted" style={{ fontSize: '12px', fontWeight: 600 }}>
-              {adminSession.role === 'master' ? '총괄 관리자 모드' : `${adminSession.role}호차 관리자`}
-            </span>
-            <button onClick={handleAdminLogout} style={{ padding: '4px 10px', fontSize: '12px' }}>
+            <h2 id="adminTitle" style={{ fontSize: '15px', color: '#172d4c', margin: 0 }}>
+              {adminSession.role === 'master' ? '총괄 관리자' : `${currentBus}호차 관리자`}
+            </h2>
+            <button onClick={handleAdminLogout} style={{ fontSize: '12px', padding: '6px 10px' }}>
               로그아웃
             </button>
           </div>
 
-          {/* Master Admin: Tab between 1호차 and 2호차 */}
+          {/* Master Admin: Clean tabs between 1호차 and 2호차 */}
           {adminSession.role === 'master' && (
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            <div className="tabs" style={{ margin: '8px 0 12px' }}>
               <button
                 type="button"
+                className={selectedMasterBus === 1 ? 'primary' : ''}
                 onClick={() => {
                   setSelectedMasterBus(1);
                   setOpenExceptionMenuId(null);
                 }}
-                style={{
-                  flex: 1,
-                  height: '42px',
-                  borderRadius: '10px',
-                  background: selectedMasterBus === 1 ? '#1864ab' : '#fff',
-                  color: selectedMasterBus === 1 ? '#fff' : '#1864ab',
-                  borderColor: '#1864ab',
-                  fontWeight: 800,
-                  fontSize: '15px'
-                }}
               >
-                🚌 1호차 보기
+                1호차
               </button>
               <button
                 type="button"
+                className={selectedMasterBus === 2 ? 'primary' : ''}
                 onClick={() => {
                   setSelectedMasterBus(2);
                   setOpenExceptionMenuId(null);
                 }}
-                style={{
-                  flex: 1,
-                  height: '42px',
-                  borderRadius: '10px',
-                  background: selectedMasterBus === 2 ? '#d9480f' : '#fff',
-                  color: selectedMasterBus === 2 ? '#fff' : '#d9480f',
-                  borderColor: '#d9480f',
-                  fontWeight: 800,
-                  fontSize: '15px'
-                }}
               >
-                🚌 2호차 보기
+                2호차
               </button>
             </div>
           )}
 
-          {/* 1호차 / 2호차 BIG BOLD HIGHLIGHT BANNER */}
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '12px 10px',
-              borderRadius: '16px',
-              margin: '8px 0 12px',
-              background: currentBus === 1 ? 'linear-gradient(135deg, #e7f5ff 0%, #d0ebff 100%)' : 'linear-gradient(135deg, #fff4e6 0%, #ffe8cc 100%)',
-              border: currentBus === 1 ? '2.5px solid #74c0fc' : '2.5px solid #ffa94d',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.06)'
-            }}
-          >
-            <div
-              style={{
-                fontSize: '26px',
-                fontWeight: 900,
-                color: currentBus === 1 ? '#1864ab' : '#d9480f',
-                letterSpacing: '-0.5px'
-              }}
-            >
-              🚌 {currentBus}호차 탑승 관리
+          {/* Summary Card (Original elegant design with slightly larger heading) */}
+          <div className="card" id="dashboardSummary">
+            <div className="row">
+              <h2 id="busTitle" style={{ fontSize: '18px', fontWeight: 800, color: '#1e3350', margin: '2px 0 8px' }}>
+                {currentBus}호차 탑승 현황
+              </h2>
+              <span className="chip ok">체크 진행 중</span>
             </div>
-          </div>
 
-          {/* Progress & Simple Counts */}
-          <div className="card" style={{ marginTop: 0, padding: '14px' }}>
-            <div className="progress-wrap" style={{ margin: '0 0 10px', padding: '10px 12px' }} aria-live="polite">
+            {/* Progress bar */}
+            <div className="progress-wrap" aria-live="polite">
               <div className="progress-top">
                 <span>
                   <strong>{stats.boarded}</strong> / {stats.total}명 탑승
@@ -696,103 +662,67 @@ export default function App() {
             </div>
 
             {/* 3 Count Boxes */}
-            <div className="stats" style={{ margin: '0 0 12px' }}>
+            <div className="stats">
               <div className="stat">
                 탑승 대상
                 <strong>{stats.targetCount}</strong>
               </div>
-              <div className="stat" style={{ color: '#167c66' }}>
+              <div className="stat">
                 탑승 완료
-                <strong style={{ color: '#167c66' }}>{stats.boarded}</strong>
+                <strong>{stats.boarded}</strong>
               </div>
-              <div className="stat" style={{ color: '#c92a2a' }}>
+              <div className="stat">
                 미탑승
-                <strong style={{ color: '#c92a2a' }}>{stats.unboarded}</strong>
+                <strong>{stats.unboarded}</strong>
               </div>
             </div>
 
-            {/* EXACTLY 3 ACTION BUTTONS (Large & Highly Readable for Mobile) */}
+            {/* 3 Action Buttons matching original styling */}
             <div
+              className="actions"
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '8px',
-                marginTop: '6px'
+                marginTop: '12px'
               }}
             >
-              {/* Button 1: 전체 탑승 */}
               <button
                 type="button"
+                className="primary"
                 onClick={handleAllBoarded}
                 disabled={adminPendingActions.size > 0 || stats.total === 0}
-                style={{
-                  height: '48px',
-                  background: '#2b8a3e',
-                  color: '#fff',
-                  borderColor: '#2b8a3e',
-                  borderRadius: '12px',
-                  fontSize: '15px',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 6px rgba(43, 138, 62, 0.25)'
-                }}
+                style={{ height: '40px', fontSize: '13px', fontWeight: 700 }}
               >
                 전체 탑승
               </button>
 
-              {/* Button 2: 전체 초기화 */}
               <button
                 type="button"
                 onClick={handleAllReset}
                 disabled={adminPendingActions.size > 0 || stats.total === 0}
-                style={{
-                  height: '48px',
-                  background: '#f1f3f5',
-                  color: '#495057',
-                  borderColor: '#ced4da',
-                  borderRadius: '12px',
-                  fontSize: '15px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                style={{ height: '40px', fontSize: '13px', fontWeight: 700 }}
               >
                 전체 초기화
               </button>
 
-              {/* Button 3: 마감 */}
               <button
                 type="button"
+                className="primary"
                 onClick={handleBusFinishAndReset}
                 disabled={adminPendingActions.size > 0}
-                style={{
-                  height: '48px',
-                  background: '#e87570',
-                  color: '#fff',
-                  borderColor: '#e87570',
-                  borderRadius: '12px',
-                  fontSize: '15px',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 6px rgba(232, 117, 112, 0.25)'
-                }}
+                style={{ height: '40px', fontSize: '13px', fontWeight: 700 }}
               >
                 마감
               </button>
             </div>
           </div>
 
-          {/* Roster List Card: Clean, Uncluttered, No Search/Filter Boxes */}
-          <div className="card" style={{ padding: '12px 14px' }}>
-            <div className="row" style={{ marginBottom: '8px' }}>
-              <h2 style={{ margin: 0, fontSize: '16px' }}>
-                {currentBus}호차 탑승 명단 ({busRoster.length}명)
-              </h2>
+          {/* Roster List Card */}
+          <div className="card" id="dashboardRoster">
+            <div className="row" style={{ marginBottom: '6px' }}>
+              <h2>탑승 명단</h2>
+              <span className="muted" style={{ fontSize: '12px' }}>총 {busRoster.length}명</span>
             </div>
 
             <div id="adminList">
@@ -810,61 +740,26 @@ export default function App() {
 
                   return (
                     <React.Fragment key={p.id}>
-                      <div
-                        className="person compact"
-                        style={{
-                          height: '48px',
-                          minHeight: '48px',
-                          borderBottom: '1px solid #f1efed',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '6px'
-                        }}
-                      >
-                        <div className="who" style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                          <span className="seq" style={{ minWidth: '22px', fontSize: '13px', fontWeight: 600, color: '#868e96' }}>
-                            {p.seq}.
-                          </span>
-                          <strong style={{ fontSize: '15px', color: '#212529', minWidth: '55px' }}>
-                            {p.name}
-                          </strong>
-                          <span
-                            className="school-inline"
-                            style={{
-                              fontSize: '12px',
-                              color: '#868e96',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
+                      <div className="person compact">
+                        <div className="who">
+                          <span className="seq">{p.seq}.</span>
+                          <strong>{p.name}</strong>
+                          <span className="school-inline">
                             {p.dept.split(' / ')[0].trim()}
                           </span>
                         </div>
 
-                        <div className="actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                          {/* Boarding Toggle Button */}
+                        <div className="actions">
                           <button
                             type="button"
+                            className={`board-toggle ${isBoarded ? 'is-boarded' : isException ? 'is-exception' : ''}`}
                             disabled={isBusy}
                             onClick={() => handleToggleBoarding(p.id, p.name, p.status)}
-                            style={{
-                              height: '36px',
-                              minWidth: '78px',
-                              borderRadius: '8px',
-                              fontSize: '13px',
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              border: isBoarded ? '1.5px solid #a3e0c7' : '1px solid #ced4da',
-                              background: isBoarded ? '#eaf8f3' : isException ? '#f8f9fa' : '#f1f3f5',
-                              color: isBoarded ? '#167c66' : isException ? '#6c757d' : '#495057'
-                            }}
+                            aria-label={`${p.name} 탑승 상태 전환`}
                           >
                             {isBusy ? '…' : isBoarded ? '✓ 탑승' : isException ? p.status : '미탑승'}
                           </button>
 
-                          {/* Exception Toggle Button */}
                           <button
                             type="button"
                             className="exception-toggle"
@@ -874,12 +769,6 @@ export default function App() {
                                 openExceptionMenuId === p.id ? null : p.id
                               )
                             }
-                            style={{
-                              width: '32px',
-                              height: '36px',
-                              borderRadius: '8px',
-                              fontSize: '16px'
-                            }}
                             aria-label={`${p.name} 불참 및 개별이동`}
                           >
                             ⋯
@@ -889,25 +778,22 @@ export default function App() {
 
                       {/* Exception drop-down sub-menu */}
                       {openExceptionMenuId === p.id && (
-                        <div className="exception-menu" style={{ padding: '8px 12px', background: '#fff9f7', borderRadius: '8px', margin: '4px 0 8px' }}>
+                        <div className="exception-menu">
                           <button
                             type="button"
                             onClick={() => handleStatusChange(p.id, p.name, '불참')}
-                            style={{ height: '30px', fontSize: '12px' }}
                           >
                             불참
                           </button>
                           <button
                             type="button"
                             onClick={() => handleStatusChange(p.id, p.name, '개별이동')}
-                            style={{ height: '30px', fontSize: '12px' }}
                           >
                             개별이동
                           </button>
                           <button
                             type="button"
                             onClick={() => handleStatusChange(p.id, p.name, '미탑승')}
-                            style={{ height: '30px', fontSize: '12px' }}
                           >
                             미탑승 복원
                           </button>
