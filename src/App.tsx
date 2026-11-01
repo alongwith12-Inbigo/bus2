@@ -4,7 +4,6 @@ import {
   BoardingRecord,
   OperationalSetting,
   BusContact,
-  Phase,
   BoardingStatus,
   AdminRole
 } from './types';
@@ -14,13 +13,11 @@ import {
   subscribeSettings,
   subscribeContacts,
   ensureBasicSettings,
-  clearAllPeopleAndRecords,
   submitSelfBoarding,
   adminSetStatus,
-  adminSetClosed,
-  adminSetFinal,
-  masterMoveBus,
-  adminResetBoardingForStop,
+  adminSetAllBoarded,
+  adminSetAllReset,
+  adminCloseAndResetNext,
   maskName
 } from './lib/firestoreService';
 import {
@@ -31,15 +28,12 @@ import {
 } from './lib/authService';
 import { CsvImportModal } from './components/CsvImportModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
-import { doc, getDocFromServer } from 'firebase/firestore';
-import { db } from './lib/firebase';
 
 type AppMode = 'self' | 'login' | 'admin';
 
 export default function App() {
   // Application view state
   const [mode, setMode] = useState<AppMode>('self');
-  const [phase, setPhase] = useState<Phase>('출발');
   const [adminSession, setAdminSession] = useState<AdminSession | null>(null);
   const [selectedMasterBus, setSelectedMasterBus] = useState<number>(1);
 
@@ -48,14 +42,13 @@ export default function App() {
   const [records, setRecords] = useState<Record<string, BoardingRecord>>({});
   const [settings, setSettings] = useState<Record<string, OperationalSetting>>({});
   const [contacts, setContacts] = useState<Record<number, BusContact>>({});
-  const [isDbReady, setIsDbReady] = useState(false);
 
   // Status & Feedback message
   const [message, setMessage] = useState<string>('');
   const [isErrorMsg, setIsErrorMsg] = useState(false);
   const msgTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const showMsg = (text: string, isErr = false, duration = 4500) => {
+  const showMsg = (text: string, isErr = false, duration = 4000) => {
     setMessage(text);
     setIsErrorMsg(isErr);
     if (msgTimer.current) clearTimeout(msgTimer.current);
@@ -73,13 +66,10 @@ export default function App() {
   const [agreedCheckboxes, setAgreedCheckboxes] = useState<Record<string, boolean>>({});
 
   // Admin view state
-  const [adminSearch, setAdminSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('전체');
   const [openExceptionMenuId, setOpenExceptionMenuId] = useState<string | null>(null);
   const [adminPendingActions, setAdminPendingActions] = useState<Set<string>>(new Set());
-  const [speedDiagnosticInfo, setSpeedDiagnosticInfo] = useState<string>('');
 
-  // Modals
+  // Modals (accessible for Master or discreetly)
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
@@ -90,16 +80,15 @@ export default function App() {
 
   // Initialize DB and real-time subscriptions
   useEffect(() => {
-    // Check existing session
     const existing = getActiveSession();
     if (existing) {
       setAdminSession(existing);
+      if (existing.role !== 'master') {
+        setSelectedMasterBus(Number(existing.role));
+      }
     }
 
-    // Ensure operational settings exist without inserting sample data
-    ensureBasicSettings().then(() => {
-      setIsDbReady(true);
-    });
+    ensureBasicSettings();
 
     const unsubPeople = subscribePeople((list) => setPeople(list));
     const unsubRecords = subscribeRecords((recs) => setRecords(recs));
@@ -121,19 +110,6 @@ export default function App() {
     return Number(adminSession.role);
   }, [adminSession, selectedMasterBus]);
 
-  // Operational settings for current bus & phase
-  const currentSetting = useMemo(() => {
-    return (
-      settings[`${phase}|${currentBus}`] || {
-        phase,
-        bus: currentBus,
-        closed: false,
-        final: false,
-        at: ''
-      }
-    );
-  }, [settings, phase, currentBus]);
-
   // Teachers candidate list for autocomplete
   const nameCandidates = useMemo(() => {
     const q = searchText.trim();
@@ -141,15 +117,12 @@ export default function App() {
     return people.filter((p) => p.name.includes(q)).slice(0, 10);
   }, [searchText, people, searchedPeople]);
 
-  // Filtered roster for Admin view
+  // Filtered roster for current bus
   const busRoster = useMemo(() => {
     return people
-      .filter((p) => {
-        const assignedBus = phase === '출발' ? p.out : p.back;
-        return assignedBus === currentBus;
-      })
+      .filter((p) => (p.out || p.back || 1) === currentBus)
       .map((p, idx) => {
-        const rec = records[`${p.id}|${phase}`];
+        const rec = records[`${p.id}|출발`];
         const status: BoardingStatus = rec?.status || '미탑승';
         return {
           ...p,
@@ -159,16 +132,7 @@ export default function App() {
           by: rec?.by || ''
         };
       });
-  }, [people, records, phase, currentBus]);
-
-  const filteredRoster = useMemo(() => {
-    const q = adminSearch.trim();
-    return busRoster.filter((p) => {
-      const matchQuery = !q || p.name.includes(q) || p.dept.includes(q);
-      const matchFilter = statusFilter === '전체' || p.status === statusFilter;
-      return matchQuery && matchFilter;
-    });
-  }, [busRoster, adminSearch, statusFilter]);
+  }, [people, records, currentBus]);
 
   // Counts & stats
   const stats = useMemo(() => {
@@ -195,16 +159,6 @@ export default function App() {
       setSearchedPeople(null);
       setSearchText('');
     }
-  };
-
-  // Handler: Select phase (출발 vs 귀가)
-  const choosePhase = (newPhase: Phase) => {
-    if (adminPendingActions.size > 0) {
-      showMsg('관리자 변경사항 저장 중입니다. 잠시 기다려 주세요.', true);
-      return;
-    }
-    setPhase(newPhase);
-    setOpenExceptionMenuId(null);
   };
 
   // Handler: Teacher Search
@@ -237,10 +191,10 @@ export default function App() {
     }
 
     setSelfPendingIds((prev) => new Set(prev).add(person.id));
-    showMsg('탑승 확인 요청됨 · Firebase 저장 중…', false, 0);
+    showMsg('탑승 확인 저장 중…', false, 0);
 
     try {
-      await submitSelfBoarding(person, phase, settings, records);
+      await submitSelfBoarding(person, '출발', settings, records);
       showMsg('✓ 탑승 확인이 완료되었습니다.');
     } catch (e: any) {
       showMsg('저장 실패: ' + (e.message || String(e)), true);
@@ -265,7 +219,7 @@ export default function App() {
         setSelectedMasterBus(Number(session.role));
       }
       setMode('admin');
-      showMsg('관리자로 로그인되었습니다.');
+      showMsg(`${session.role === 'master' ? '총괄' : session.role + '호차'} 관리자로 로그인되었습니다.`);
     } catch (err: any) {
       showMsg(err.message || String(err), true);
     } finally {
@@ -280,7 +234,7 @@ export default function App() {
     showMsg('로그아웃되었습니다.');
   };
 
-  // Handler: Admin toggle Boarding (미탑승 <-> 탑승)
+  // Handler: Single Person Boarding Toggle
   const handleToggleBoarding = async (personId: string, personName: string, currentStatus: BoardingStatus) => {
     const newStatus: BoardingStatus = currentStatus === '탑승' ? '미탑승' : '탑승';
     await handleStatusChange(personId, personName, newStatus);
@@ -295,33 +249,32 @@ export default function App() {
     setOpenExceptionMenuId(null);
 
     // Optimistic update
-    const prevRec = records[`${personId}|${phase}`];
+    const prevRec = records[`${personId}|출발`];
     const optimisticRec: BoardingRecord = {
       id: personId,
-      phase,
+      phase: '출발',
       status: newStatus,
       at: new Date().toISOString(),
       by: '관리자'
     };
-    setRecords((prev) => ({ ...prev, [`${personId}|${phase}`]: optimisticRec }));
+    setRecords((prev) => ({ ...prev, [`${personId}|출발`]: optimisticRec }));
 
     try {
       await adminSetStatus(
         personId,
         personName,
-        phase,
+        '출발',
         currentBus,
         newStatus,
         adminSession.role,
         settings
       );
-      showMsg('탑승 상태가 저장되었습니다.');
+      showMsg(`${personName} 선생님: ${newStatus}`);
     } catch (err: any) {
-      // Revert optimistic update
       if (prevRec) {
-        setRecords((prev) => ({ ...prev, [`${personId}|${phase}`]: prevRec }));
+        setRecords((prev) => ({ ...prev, [`${personId}|출발`]: prevRec }));
       }
-      showMsg('저장 실패 · 이전 상태 복원: ' + (err.message || String(err)), true);
+      showMsg('저장 실패: ' + (err.message || String(err)), true);
     } finally {
       setAdminPendingActions((prev) => {
         const next = new Set(prev);
@@ -331,20 +284,20 @@ export default function App() {
     }
   };
 
-  // Handler: Admin Close toggle
-  const handleToggleClosed = async () => {
+  // 1. Button 1: [ 전체 탑승 ]
+  const handleAllBoarded = async () => {
     if (!adminSession) return;
-    const isClosed = currentSetting.closed;
-    const confirmPrompt = `${currentBus}호차 ${phase} 체크를 ${isClosed ? '재개' : '마감'}할까요?`;
-    if (!window.confirm(confirmPrompt)) return;
+    if (!window.confirm(`${currentBus}호차 전체 인원(${stats.total}명)을 '탑승' 처리하시겠습니까?`)) return;
 
-    const actionKey = `close:${currentBus}`;
+    const actionKey = `all_board:${currentBus}`;
     setAdminPendingActions((prev) => new Set(prev).add(actionKey));
+    showMsg('전체 탑승 처리 중…', false, 0);
+
     try {
-      await adminSetClosed(phase, currentBus, !isClosed, adminSession.role, settings);
-      showMsg(`${currentBus}호차 ${phase} 체크가 ${!isClosed ? '마감' : '재개'}되었습니다.`);
+      const count = await adminSetAllBoarded(currentBus, adminSession.role, people);
+      showMsg(`✓ ${currentBus}호차 전원(${count}명) 탑승 처리 완료`);
     } catch (err: any) {
-      showMsg('처리 실패: ' + (err.message || String(err)), true);
+      showMsg('전체 탑승 실패: ' + (err.message || String(err)), true);
     } finally {
       setAdminPendingActions((prev) => {
         const next = new Set(prev);
@@ -354,87 +307,18 @@ export default function App() {
     }
   };
 
-  // Handler: Admin Final toggle
-  const handleToggleFinal = async () => {
+  // 2. Button 2: [ 전체 초기화 ]
+  const handleAllReset = async () => {
     if (!adminSession) return;
-    const isFinal = currentSetting.final;
-    const confirmPrompt = `${currentBus}호차 ${phase} 최종 확인을 ${isFinal ? '해제' : '완료'}할까요?`;
-    if (!window.confirm(confirmPrompt)) return;
+    if (!window.confirm(`${currentBus}호차 모든 탑승 상태를 '미탑승'으로 초기화할까요?`)) return;
 
-    const actionKey = `final:${currentBus}`;
+    const actionKey = `all_reset:${currentBus}`;
     setAdminPendingActions((prev) => new Set(prev).add(actionKey));
-    try {
-      await adminSetFinal(
-        phase,
-        currentBus,
-        !isFinal,
-        adminSession.role,
-        settings,
-        people,
-        records
-      );
-      showMsg(`${currentBus}호차 ${phase} 최종 확인이 ${!isFinal ? '완료' : '해제'}되었습니다.`);
-    } catch (err: any) {
-      showMsg('처리 실패: ' + (err.message || String(err)), true);
-    } finally {
-      setAdminPendingActions((prev) => {
-        const next = new Set(prev);
-        next.delete(actionKey);
-        return next;
-      });
-    }
-  };
-
-  // Handler: Master move participant bus
-  const handleMoveBus = async (person: Person) => {
-    if (!adminSession || adminSession.role !== 'master') return;
-    const oldBus = phase === '출발' ? person.out : person.back;
-    const nextBus = oldBus === 1 ? 2 : 1;
-    if (!window.confirm(`${person.name} 선생님을 ${phase} ${nextBus}호차로 변경할까요?`)) return;
-
-    const actionKey = `move:${person.id}`;
-    setAdminPendingActions((prev) => new Set(prev).add(actionKey));
-    try {
-      await masterMoveBus(person, phase, nextBus, settings);
-      showMsg(`${person.name} 선생님의 ${phase} 배정이 ${nextBus}호차로 변경되었습니다.`);
-    } catch (err: any) {
-      showMsg('변경 실패: ' + (err.message || String(err)), true);
-    } finally {
-      setAdminPendingActions((prev) => {
-        const next = new Set(prev);
-        next.delete(actionKey);
-        return next;
-      });
-    }
-  };
-
-  // Handler: Reset boarding for stop (중간 정차 시 전체 미탑승 초기화)
-  const handleResetForStop = async () => {
-    if (!adminSession) return;
-    if (adminPendingActions.size > 0 || selfPendingIds.size > 0) {
-      showMsg('저장 중인 작업이 있습니다. 완료 후 초기화해 주세요.', true);
-      return;
-    }
-
-    const first = `${currentBus}호차 · ${phase} 탑승 현황을 전원 미탑승으로 초기화할까요?\n\n중간 정차 후 재탑승을 확인할 때 사용합니다. 기존 탑승·불참·개별이동 상태가 모두 미탑승으로 바뀌며, 마감과 최종 확인도 해제됩니다. 다른 호차와 다른 구간은 유지되며 변경 전 상태는 기록에 보존됩니다.`;
-    if (!window.confirm(first)) return;
-
-    const second = `최종 확인: ${currentBus}호차 ${phase}의 모든 탑승 상태를 초기화합니다. 진행할까요?`;
-    if (!window.confirm(second)) return;
-
-    const actionKey = `reset:${phase}:${currentBus}`;
-    setAdminPendingActions((prev) => new Set(prev).add(actionKey));
-    showMsg('초기화 중… Firebase에 저장 완료될 때까지 기다려 주세요.', false, 0);
+    showMsg('전체 초기화 중…', false, 0);
 
     try {
-      const result = await adminResetBoardingForStop(
-        phase,
-        currentBus,
-        adminSession.role,
-        people,
-        records
-      );
-      showMsg(`${currentBus}호차 ${phase}: ${result.count}명 미탑승으로 초기화 완료. 다시 체크할 수 있습니다.`);
+      const count = await adminSetAllReset(currentBus, adminSession.role, people);
+      showMsg(`✓ ${currentBus}호차 전원(${count}명) 미탑승으로 초기화되었습니다.`);
     } catch (err: any) {
       showMsg('초기화 실패: ' + (err.message || String(err)), true);
     } finally {
@@ -446,28 +330,39 @@ export default function App() {
     }
   };
 
-  // Speed Diagnostic: Tests live Firestore server response latency
-  const handleSpeedDiagnostic = async () => {
-    setSpeedDiagnosticInfo('측정 중…');
-    const start = performance.now();
+  // 3. Button 3: [ 마감 ] (출발 및 다음 출석체크를 위해 전원 미탑승 초기화)
+  const handleBusFinishAndReset = async () => {
+    if (!adminSession) return;
+    const confirmPrompt = `${currentBus}호차 탑승 확인을 마감합니다.\n(현재 탑승: ${stats.boarded}명 / 미탑승: ${stats.unboarded}명)\n\n출발 후 다음 출석체크를 위해 전원 '미탑승' 상태로 초기화됩니다.\n진행하시겠습니까?`;
+    if (!window.confirm(confirmPrompt)) return;
+
+    const actionKey = `finish:${currentBus}`;
+    setAdminPendingActions((prev) => new Set(prev).add(actionKey));
+    showMsg('마감 및 다음 회차 초기화 중…', false, 0);
+
     try {
-      await getDocFromServer(doc(db, 'settings', `${phase}_${currentBus}`));
-      const elapsed = Math.round(performance.now() - start);
-      setSpeedDiagnosticInfo(`Firestore 응답 ${elapsed}ms (실시간 동기화 정상)`);
-    } catch (e: any) {
-      setSpeedDiagnosticInfo('진단 실패: ' + (e.message || String(e)));
+      const res = await adminCloseAndResetNext(currentBus, adminSession.role, people, records);
+      showMsg(`✓ ${currentBus}호차 마감 완료 (${res.boardedCount}명 탑승 기록 보존됨). 다음 탑승을 위해 전원 미탑승으로 준비되었습니다.`);
+    } catch (err: any) {
+      showMsg('마감 처리 실패: ' + (err.message || String(err)), true);
+    } finally {
+      setAdminPendingActions((prev) => {
+        const next = new Set(prev);
+        next.delete(actionKey);
+        return next;
+      });
     }
   };
 
-  // Phone number resolution for teacher contact bar
+  // Teacher Contact Phone
   const teacherBusPhone = useMemo(() => {
     if (!searchedPeople || !searchedPeople.length) return '';
-    const buses = Array.from(new Set(searchedPeople.map((p) => (phase === '출발' ? p.out : p.back))));
+    const buses = Array.from(new Set(searchedPeople.map((p) => p.out || p.back || 1)));
     if (buses.length === 1) {
       return contacts[buses[0]]?.phone?.replace(/[^0-9+]/g, '') || '';
     }
     return '';
-  }, [searchedPeople, phase, contacts]);
+  }, [searchedPeople, contacts]);
 
   return (
     <main>
@@ -492,7 +387,7 @@ export default function App() {
       {/* Header bar */}
       <div className="row page-head">
         <div>
-          <div className="muted">2026 교직원 워크숍 · 출발/귀가 탑승 관리</div>
+          <div className="muted">2026 교직원 워크숍 · 버스 탑승 관리</div>
           <h1>워크숍 버스 탑승 확인</h1>
         </div>
         <button id="modeBtn" onClick={toggleMode}>
@@ -508,24 +403,6 @@ export default function App() {
       {/* ---------------- 1. TEACHER VIEW ---------------- */}
       {mode === 'self' && (
         <div id="selfView">
-          {/* Phase Tabs: 출발 vs 귀가 */}
-          <div className="tabs">
-            <button
-              id="selfOut"
-              className={phase === '출발' ? 'primary' : ''}
-              onClick={() => choosePhase('출발')}
-            >
-              출발 탑승
-            </button>
-            <button
-              id="selfBack"
-              className={phase === '귀가' ? 'primary' : ''}
-              onClick={() => choosePhase('귀가')}
-            >
-              귀가 탑승
-            </button>
-          </div>
-
           {/* Manager Contact Bar (shown when bus contact is resolved) */}
           {teacherBusPhone && (
             <div className="contact-actions" aria-label="호차 관리자 연락">
@@ -598,12 +475,9 @@ export default function App() {
                   </p>
                 ) : (
                   searchedPeople.map((p) => {
-                    const assignedBus = phase === '출발' ? p.out : p.back;
-                    const rec = records[`${p.id}|${phase}`];
+                    const assignedBus = p.out || p.back || 1;
+                    const rec = records[`${p.id}|출발`];
                     const status: BoardingStatus = rec?.status || '미탑승';
-                    const busSetting = settings[`${phase}|${assignedBus}`];
-                    const isClosed = !!busSetting?.closed;
-                    const isFinal = !!busSetting?.final;
                     const isPending = selfPendingIds.has(p.id);
 
                     return (
@@ -612,26 +486,31 @@ export default function App() {
                           <strong>{maskName(p.name)}</strong>
                           <span className="self-school">{p.dept}</span>
                         </div>
-                        <div className="self-bus">
-                          {assignedBus}호차 · {phase} · <strong>{status}</strong>
+                        <div className="self-bus" style={{ fontSize: '13px', margin: '8px 0 12px' }}>
+                          <span
+                            style={{
+                              background: assignedBus === 1 ? '#e7f5ff' : '#fff4e6',
+                              color: assignedBus === 1 ? '#1864ab' : '#d9480f',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              marginRight: '6px'
+                            }}
+                          >
+                            {assignedBus}호차
+                          </span>
+                          상태: <strong>{status}</strong>
                         </div>
 
                         {isPending ? (
                           <div className="self-saving">
-                            탑승 확인 요청됨
-                            <small>
-                              Firebase에 저장 중입니다. 완료 안내가 나올 때까지 기다려 주세요.
-                            </small>
+                            탑승 확인 저장 중입니다. 잠시만 기다려 주세요…
                           </div>
                         ) : status === '탑승' ? (
                           <div className="self-done">✓ 탑승 확인 완료 · 저장됨</div>
                         ) : status !== '미탑승' ? (
                           <div className="self-closed">
                             현재 상태: {status} · 관리자에게 문의하세요.
-                          </div>
-                        ) : isClosed || isFinal ? (
-                          <div className="self-closed">
-                            탑승 확인이 마감되었습니다. 담당자에게 문의하세요.
                           </div>
                         ) : (
                           <>
@@ -711,11 +590,10 @@ export default function App() {
             </form>
 
             <p className="muted" style={{ marginTop: '12px' }}>
-              비밀번호 오류 5회 시 15분간 로그인이 제한됩니다. 담당 버스만 수정할 수 있습니다.
-              버스 변경은 총괄 관리자 전용입니다.
+              비밀번호 오류 5회 시 15분간 로그인이 제한됩니다.
               <br />
               <span style={{ color: '#273b55', fontWeight: 600 }}>
-                (초기 비밀번호: 1호차 1111 / 2호차 2222 / 총괄 관리자 0000)
+                (초기 비밀번호: 1호차 1111 / 2호차 2222 / 총괄 0000)
               </span>
             </p>
           </div>
@@ -725,257 +603,311 @@ export default function App() {
       {/* ---------------- 3. ADMIN DASHBOARD VIEW ---------------- */}
       {mode === 'admin' && adminSession && (
         <div id="adminView">
-          {/* Quick jump navigation */}
-          <nav className="dashboard-nav" aria-label="관리 화면 바로가기">
-            <a href="#dashboardSummary">탑승 현황</a>
-            <a href="#dashboardRoster">탑승 명단</a>
-          </nav>
-
-          {/* Admin Header */}
-          <div className="row">
-            <h2 id="adminTitle">
-              {adminSession.role === 'master' ? '총괄 관리자' : `${currentBus}호차 관리자`} · {phase}
-            </h2>
-            <button onClick={handleAdminLogout}>로그아웃</button>
-          </div>
-
-          {/* Phase Tabs: 출발 vs 귀가 */}
-          <div className="tabs">
-            <button
-              className={phase === '출발' ? 'primary' : ''}
-              onClick={() => choosePhase('출발')}
-            >
-              출발
-            </button>
-            <button
-              className={phase === '귀가' ? 'primary' : ''}
-              onClick={() => choosePhase('귀가')}
-            >
-              귀가
+          {/* Top Admin Bar */}
+          <div className="row" style={{ marginBottom: '8px' }}>
+            <span className="muted" style={{ fontSize: '12px', fontWeight: 600 }}>
+              {adminSession.role === 'master' ? '총괄 관리자 모드' : `${adminSession.role}호차 관리자`}
+            </span>
+            <button onClick={handleAdminLogout} style={{ padding: '4px 10px', fontSize: '12px' }}>
+              로그아웃
             </button>
           </div>
 
-          {/* Master Bus selector */}
+          {/* Master Admin: Tab between 1호차 and 2호차 */}
           {adminSession.role === 'master' && (
-            <div id="masterBus" style={{ marginBottom: '10px' }}>
-              <label>관리 버스</label>
-              <select
-                value={selectedMasterBus}
-                onChange={(e) => {
-                  setSelectedMasterBus(Number(e.target.value));
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMasterBus(1);
                   setOpenExceptionMenuId(null);
                 }}
+                style={{
+                  flex: 1,
+                  height: '42px',
+                  borderRadius: '10px',
+                  background: selectedMasterBus === 1 ? '#1864ab' : '#fff',
+                  color: selectedMasterBus === 1 ? '#fff' : '#1864ab',
+                  borderColor: '#1864ab',
+                  fontWeight: 800,
+                  fontSize: '15px'
+                }}
               >
-                <option value="1">1호차</option>
-                <option value="2">2호차</option>
-              </select>
+                🚌 1호차 보기
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMasterBus(2);
+                  setOpenExceptionMenuId(null);
+                }}
+                style={{
+                  flex: 1,
+                  height: '42px',
+                  borderRadius: '10px',
+                  background: selectedMasterBus === 2 ? '#d9480f' : '#fff',
+                  color: selectedMasterBus === 2 ? '#fff' : '#d9480f',
+                  borderColor: '#d9480f',
+                  fontWeight: 800,
+                  fontSize: '15px'
+                }}
+              >
+                🚌 2호차 보기
+              </button>
             </div>
           )}
 
-          {/* Summary Card */}
-          <div className="card" id="dashboardSummary">
-            <div className="row">
-              <h2 id="busTitle">{currentBus}호차 탑승 현황</h2>
-              <span className={`chip ${currentSetting.closed ? 'warn' : 'ok'}`}>
-                {currentSetting.closed ? '체크 마감' : '체크 진행 중'}
-              </span>
+          {/* 1호차 / 2호차 BIG BOLD HIGHLIGHT BANNER */}
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '12px 10px',
+              borderRadius: '16px',
+              margin: '8px 0 12px',
+              background: currentBus === 1 ? 'linear-gradient(135deg, #e7f5ff 0%, #d0ebff 100%)' : 'linear-gradient(135deg, #fff4e6 0%, #ffe8cc 100%)',
+              border: currentBus === 1 ? '2.5px solid #74c0fc' : '2.5px solid #ffa94d',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.06)'
+            }}
+          >
+            <div
+              style={{
+                fontSize: '26px',
+                fontWeight: 900,
+                color: currentBus === 1 ? '#1864ab' : '#d9480f',
+                letterSpacing: '-0.5px'
+              }}
+            >
+              🚌 {currentBus}호차 탑승 관리
             </div>
+          </div>
 
-            {/* Boarding progress bar */}
-            <div className="progress-wrap" aria-live="polite">
+          {/* Progress & Simple Counts */}
+          <div className="card" style={{ marginTop: 0, padding: '14px' }}>
+            <div className="progress-wrap" style={{ margin: '0 0 10px', padding: '10px 12px' }} aria-live="polite">
               <div className="progress-top">
                 <span>
                   <strong>{stats.boarded}</strong> / {stats.total}명 탑승
                 </span>
                 <strong>{stats.pct}%</strong>
               </div>
-              <div
-                className="progress-track"
-                role="progressbar"
-                aria-label={`${currentBus}호차 탑승률`}
-                aria-valuenow={stats.pct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
+              <div className="progress-track" role="progressbar">
                 <div className="progress-fill" style={{ width: `${stats.pct}%` }} />
               </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="stats">
+            {/* 3 Count Boxes */}
+            <div className="stats" style={{ margin: '0 0 12px' }}>
               <div className="stat">
                 탑승 대상
                 <strong>{stats.targetCount}</strong>
               </div>
-              <div className="stat">
+              <div className="stat" style={{ color: '#167c66' }}>
                 탑승 완료
-                <strong>{stats.boarded}</strong>
+                <strong style={{ color: '#167c66' }}>{stats.boarded}</strong>
               </div>
-              <div className="stat">
+              <div className="stat" style={{ color: '#c92a2a' }}>
                 미탑승
-                <strong>{stats.unboarded}</strong>
+                <strong style={{ color: '#c92a2a' }}>{stats.unboarded}</strong>
               </div>
             </div>
 
-            <p className="muted" id="extraStats">
-              불참 {stats.absent}명 · 개별 이동 {stats.indiv}명 ·{' '}
-              {currentSetting.final ? '최종 확인 완료' : '최종 확인 전'}
-            </p>
-
-            {/* Main Action Buttons */}
-            <div className="actions">
-              <button onClick={handleToggleClosed}>
-                {currentSetting.closed ? '체크 재개' : '체크 마감'}
-              </button>
+            {/* EXACTLY 3 ACTION BUTTONS (Large & Highly Readable for Mobile) */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '8px',
+                marginTop: '6px'
+              }}
+            >
+              {/* Button 1: 전체 탑승 */}
               <button
-                onClick={handleToggleFinal}
-                disabled={!currentSetting.final && (stats.unboarded > 0 || !currentSetting.closed)}
+                type="button"
+                onClick={handleAllBoarded}
+                disabled={adminPendingActions.size > 0 || stats.total === 0}
+                style={{
+                  height: '48px',
+                  background: '#2b8a3e',
+                  color: '#fff',
+                  borderColor: '#2b8a3e',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 6px rgba(43, 138, 62, 0.25)'
+                }}
               >
-                {currentSetting.final ? '최종 확인 해제' : '최종 확인'}
+                전체 탑승
               </button>
+
+              {/* Button 2: 전체 초기화 */}
               <button
-                className="reset-stop-btn"
-                onClick={handleResetForStop}
+                type="button"
+                onClick={handleAllReset}
+                disabled={adminPendingActions.size > 0 || stats.total === 0}
+                style={{
+                  height: '48px',
+                  background: '#f1f3f5',
+                  color: '#495057',
+                  borderColor: '#ced4da',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                전체 초기화
+              </button>
+
+              {/* Button 3: 마감 */}
+              <button
+                type="button"
+                onClick={handleBusFinishAndReset}
                 disabled={adminPendingActions.size > 0}
+                style={{
+                  height: '48px',
+                  background: '#e87570',
+                  color: '#fff',
+                  borderColor: '#e87570',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 6px rgba(232, 117, 112, 0.25)'
+                }}
               >
-                전체 미탑승 초기화
+                마감
               </button>
-              <button onClick={() => setIsCsvModalOpen(true)}>
-                명단 CSV 관리
-              </button>
-              <button onClick={() => setIsSettingsModalOpen(true)}>
-                설정
-              </button>
-            </div>
-
-            <p className="muted" style={{ marginTop: '8px' }}>
-              체크를 마감하고 현장에서 실제 인원을 대조한 뒤 최종 확인을 눌러주세요.
-            </p>
-
-            {/* Diagnostics */}
-            <div className="actions" style={{ marginTop: '10px', alignItems: 'center' }}>
-              <button onClick={handleSpeedDiagnostic}>속도 진단</button>
-              <span className="muted" style={{ fontSize: '11px' }}>
-                {speedDiagnosticInfo}
-              </span>
             </div>
           </div>
 
-          {/* Roster Card */}
-          <div className="card" id="dashboardRoster">
-            <h2>탑승 명단</h2>
-            <input
-              id="adminSearch"
-              placeholder="이름 또는 부서 검색"
-              value={adminSearch}
-              onChange={(e) => setAdminSearch(e.target.value)}
-            />
+          {/* Roster List Card: Clean, Uncluttered, No Search/Filter Boxes */}
+          <div className="card" style={{ padding: '12px 14px' }}>
+            <div className="row" style={{ marginBottom: '8px' }}>
+              <h2 style={{ margin: 0, fontSize: '16px' }}>
+                {currentBus}호차 탑승 명단 ({busRoster.length}명)
+              </h2>
+            </div>
 
-            <label>상태 필터</label>
-            <select
-              id="statusFilter"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="전체">전체 ({busRoster.length}명)</option>
-              <option value="미탑승">미탑승 ({stats.unboarded}명)</option>
-              <option value="탑승">탑승 ({stats.boarded}명)</option>
-              <option value="불참">불참 ({stats.absent}명)</option>
-              <option value="개별이동">개별 이동 ({stats.indiv}명)</option>
-            </select>
-
-            {/* Roster List */}
-            <div id="adminList" style={{ marginTop: '8px' }}>
-              {filteredRoster.length === 0 ? (
-                <p className="muted">해당 인원이 없습니다.</p>
+            <div id="adminList">
+              {busRoster.length === 0 ? (
+                <p className="muted" style={{ padding: '16px 0', textAlign: 'center' }}>
+                  현재 {currentBus}호차에 배정된 참가자가 없습니다.
+                  <br />
+                  {adminSession.role === 'master' && '하단 [명단 CSV 관리]에서 참가자 명단을 등록해 주세요.'}
+                </p>
               ) : (
-                filteredRoster.map((p) => {
-                  const isLocked = !!(currentSetting.closed || currentSetting.final);
+                busRoster.map((p) => {
                   const isBusy = adminPendingActions.has(`status:${p.id}`);
+                  const isBoarded = p.status === '탑승';
                   const isException = p.status === '불참' || p.status === '개별이동';
-                  const boardClass =
-                    p.status === '탑승'
-                      ? 'is-boarded'
-                      : isException
-                      ? 'is-exception'
-                      : '';
-                  const label =
-                    p.status === '탑승'
-                      ? '✓ 탑승'
-                      : isException
-                      ? p.status === '개별이동'
-                        ? '개별'
-                        : '불참'
-                      : '미탑승';
 
                   return (
                     <React.Fragment key={p.id}>
-                      <div className="person compact">
-                        <div className="who">
-                          <span className="seq">{p.seq}.</span>
-                          <strong>{p.name}</strong>
-                          <span className="school-inline">
+                      <div
+                        className="person compact"
+                        style={{
+                          height: '48px',
+                          minHeight: '48px',
+                          borderBottom: '1px solid #f1efed',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '6px'
+                        }}
+                      >
+                        <div className="who" style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                          <span className="seq" style={{ minWidth: '22px', fontSize: '13px', fontWeight: 600, color: '#868e96' }}>
+                            {p.seq}.
+                          </span>
+                          <strong style={{ fontSize: '15px', color: '#212529', minWidth: '55px' }}>
+                            {p.name}
+                          </strong>
+                          <span
+                            className="school-inline"
+                            style={{
+                              fontSize: '12px',
+                              color: '#868e96',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
                             {p.dept.split(' / ')[0].trim()}
                           </span>
                         </div>
 
-                        <div className="actions">
-                          {isLocked ? (
-                            <span className="chip warn">{p.status} · 잠금</span>
-                          ) : (
-                            <>
-                              <button
-                                className={`board-toggle ${boardClass}`}
-                                disabled={isBusy}
-                                onClick={() => handleToggleBoarding(p.id, p.name, p.status)}
-                                aria-label={`${p.name} 탑승 상태 전환`}
-                              >
-                                {isBusy ? '저장 중…' : label}
-                              </button>
-                              <button
-                                className="exception-toggle"
-                                disabled={isBusy}
-                                onClick={() =>
-                                  setOpenExceptionMenuId(
-                                    openExceptionMenuId === p.id ? null : p.id
-                                  )
-                                }
-                                aria-label={`${p.name} 불참 및 개별이동`}
-                              >
-                                ⋯
-                              </button>
-                            </>
-                          )}
+                        <div className="actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                          {/* Boarding Toggle Button */}
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => handleToggleBoarding(p.id, p.name, p.status)}
+                            style={{
+                              height: '36px',
+                              minWidth: '78px',
+                              borderRadius: '8px',
+                              fontSize: '13px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              border: isBoarded ? '1.5px solid #a3e0c7' : '1px solid #ced4da',
+                              background: isBoarded ? '#eaf8f3' : isException ? '#f8f9fa' : '#f1f3f5',
+                              color: isBoarded ? '#167c66' : isException ? '#6c757d' : '#495057'
+                            }}
+                          >
+                            {isBusy ? '…' : isBoarded ? '✓ 탑승' : isException ? p.status : '미탑승'}
+                          </button>
 
-                          {adminSession.role === 'master' && (
-                            <button
-                              onClick={() => handleMoveBus(p)}
-                              style={{ padding: '3px 6px', fontSize: '11px', height: '28px' }}
-                            >
-                              호차↔
-                            </button>
-                          )}
+                          {/* Exception Toggle Button */}
+                          <button
+                            type="button"
+                            className="exception-toggle"
+                            disabled={isBusy}
+                            onClick={() =>
+                              setOpenExceptionMenuId(
+                                openExceptionMenuId === p.id ? null : p.id
+                              )
+                            }
+                            style={{
+                              width: '32px',
+                              height: '36px',
+                              borderRadius: '8px',
+                              fontSize: '16px'
+                            }}
+                            aria-label={`${p.name} 불참 및 개별이동`}
+                          >
+                            ⋯
+                          </button>
                         </div>
                       </div>
 
                       {/* Exception drop-down sub-menu */}
-                      {!isLocked && openExceptionMenuId === p.id && (
-                        <div className="exception-menu">
+                      {openExceptionMenuId === p.id && (
+                        <div className="exception-menu" style={{ padding: '8px 12px', background: '#fff9f7', borderRadius: '8px', margin: '4px 0 8px' }}>
                           <button
                             type="button"
                             onClick={() => handleStatusChange(p.id, p.name, '불참')}
+                            style={{ height: '30px', fontSize: '12px' }}
                           >
                             불참
                           </button>
                           <button
                             type="button"
                             onClick={() => handleStatusChange(p.id, p.name, '개별이동')}
+                            style={{ height: '30px', fontSize: '12px' }}
                           >
                             개별이동
                           </button>
                           <button
                             type="button"
                             onClick={() => handleStatusChange(p.id, p.name, '미탑승')}
+                            style={{ height: '30px', fontSize: '12px' }}
                           >
                             미탑승 복원
                           </button>
@@ -987,10 +919,32 @@ export default function App() {
               )}
             </div>
           </div>
+
+          {/* Discreet Management Tools for Master Admin */}
+          {adminSession.role === 'master' && (
+            <div style={{ textAlign: 'center', marginTop: '16px', padding: '8px 0' }}>
+              <div style={{ display: 'inline-flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCsvModalOpen(true)}
+                  style={{ fontSize: '12px', color: '#495057', background: '#fff', border: '1px solid #ced4da', borderRadius: '8px' }}
+                >
+                  📁 명단 CSV 관리
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  style={{ fontSize: '12px', color: '#495057', background: '#fff', border: '1px solid #ced4da', borderRadius: '8px' }}
+                >
+                  ⚙️ 연락처 및 비밀번호 설정
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ---------------- CSV Import Modal ---------------- */}
+      {/* ---------------- CSV Import Modal (Master Admin) ---------------- */}
       {isCsvModalOpen && adminSession && (
         <CsvImportModal
           isOpen={isCsvModalOpen}
@@ -1001,7 +955,7 @@ export default function App() {
         />
       )}
 
-      {/* ---------------- Admin Settings Modal ---------------- */}
+      {/* ---------------- Admin Settings Modal (Master Admin) ---------------- */}
       {isSettingsModalOpen && adminSession && (
         <AdminSettingsModal
           isOpen={isSettingsModalOpen}

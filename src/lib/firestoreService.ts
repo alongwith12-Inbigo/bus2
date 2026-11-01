@@ -225,6 +225,151 @@ export async function submitSelfBoarding(
   }
 }
 
+// Admin set all to boarded for bus
+export async function adminSetAllBoarded(
+  bus: number,
+  role: AdminRole,
+  people: Person[]
+): Promise<number> {
+  const targetPeople = people.filter((p) => (p.out || p.back || 1) === bus);
+  if (!targetPeople.length) return 0;
+
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  for (const p of targetPeople) {
+    const recRef = doc(db, 'records', `${p.id}_출발`);
+    const record: BoardingRecord = {
+      id: p.id,
+      phase: '출발',
+      status: '탑승',
+      at: now,
+      by: '관리자'
+    };
+    batch.set(recRef, record);
+  }
+
+  const logId = 'all_board_' + Date.now();
+  const roleName = role === 'master' ? '총괄 관리자' : `${role}호차 관리자`;
+  batch.set(doc(db, 'logs', logId), {
+    id: logId,
+    timestamp: now,
+    role: roleName,
+    action: '전체탑승',
+    targetId: `${bus}호차`,
+    detail: `${bus}호차 전원(${targetPeople.length}명) 탑승 완료 처리`
+  });
+
+  try {
+    await batch.commit();
+    return targetPeople.length;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'adminSetAllBoarded');
+  }
+}
+
+// Admin set all to unboarded for bus
+export async function adminSetAllReset(
+  bus: number,
+  role: AdminRole,
+  people: Person[]
+): Promise<number> {
+  const targetPeople = people.filter((p) => (p.out || p.back || 1) === bus);
+  if (!targetPeople.length) return 0;
+
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  for (const p of targetPeople) {
+    const recRef = doc(db, 'records', `${p.id}_출발`);
+    const record: BoardingRecord = {
+      id: p.id,
+      phase: '출발',
+      status: '미탑승',
+      at: now,
+      by: '관리자 초기화'
+    };
+    batch.set(recRef, record);
+  }
+
+  const logId = 'all_reset_' + Date.now();
+  const roleName = role === 'master' ? '총괄 관리자' : `${role}호차 관리자`;
+  batch.set(doc(db, 'logs', logId), {
+    id: logId,
+    timestamp: now,
+    role: roleName,
+    action: '전체초기화',
+    targetId: `${bus}호차`,
+    detail: `${bus}호차 전원(${targetPeople.length}명) 미탑승 초기화`
+  });
+
+  try {
+    await batch.commit();
+    return targetPeople.length;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'adminSetAllReset');
+  }
+}
+
+// Admin finish boarding and reset for next session
+export async function adminCloseAndResetNext(
+  bus: number,
+  role: AdminRole,
+  people: Person[],
+  currentRecords: Record<string, BoardingRecord>
+): Promise<{ count: number; boardedCount: number }> {
+  const targetPeople = people.filter((p) => (p.out || p.back || 1) === bus);
+  const now = new Date().toISOString();
+
+  let boardedCount = 0;
+  const snapshot: Array<{ id: string; name: string; status: string }> = [];
+  for (const p of targetPeople) {
+    const rec = currentRecords[`${p.id}|출발`];
+    const st = rec?.status || '미탑승';
+    if (st === '탑승') boardedCount++;
+    snapshot.push({ id: p.id, name: p.name, status: st });
+  }
+
+  const batch = writeBatch(db);
+
+  // Reset all to '미탑승' so next check-in is ready for teachers
+  for (const p of targetPeople) {
+    const recRef = doc(db, 'records', `${p.id}_출발`);
+    const record: BoardingRecord = {
+      id: p.id,
+      phase: '출발',
+      status: '미탑승',
+      at: now,
+      by: '마감 초기화'
+    };
+    batch.set(recRef, record);
+  }
+
+  // Save departure log
+  const logId = 'finish_' + Date.now();
+  const roleName = role === 'master' ? '총괄 관리자' : `${role}호차 관리자`;
+  batch.set(doc(db, 'logs', logId), {
+    id: logId,
+    timestamp: now,
+    role: roleName,
+    action: '탑승마감_다음준비',
+    targetId: `${bus}호차`,
+    detail: JSON.stringify({
+      bus,
+      total: targetPeople.length,
+      finalBoarded: boardedCount,
+      snapshot
+    })
+  });
+
+  try {
+    await batch.commit();
+    return { count: targetPeople.length, boardedCount };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'adminCloseAndResetNext');
+  }
+}
+
 // Admin set status for participant
 export async function adminSetStatus(
   id: string,
@@ -235,16 +380,11 @@ export async function adminSetStatus(
   role: AdminRole,
   settings: Record<string, OperationalSetting>
 ): Promise<void> {
-  const s = settings[`${phase}|${bus}`];
-  if (s && (s.closed || s.final)) {
-    throw new Error('마감 또는 최종 확인 상태입니다. 먼저 해제하세요.');
-  }
-
-  const recordId = `${id}_${phase}`;
+  const recordId = `${id}_출발`;
   const now = new Date().toISOString();
   const record: BoardingRecord = {
     id,
-    phase,
+    phase: '출발',
     status: newStatus,
     at: now,
     by: '관리자'
